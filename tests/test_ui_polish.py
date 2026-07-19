@@ -69,7 +69,7 @@ def test_customer_app_source_hides_technical_default_controls() -> None:
 def test_first_step_has_no_bottom_back_control() -> None:
     assert ConsultationStep.welcome.value == "welcome"
     source = (ROOT / "app.py").read_text(encoding="utf-8")
-    assert "state.step not in {ConsultationStep.welcome, ConsultationStep.result}" in source
+    assert "state.step not in {ConsultationStep.welcome, ConsultationStep.sample_or_custom, ConsultationStep.generating}" in source
 
 
 def test_compact_start_over_exists_in_topbar_only() -> None:
@@ -90,3 +90,33 @@ def test_compact_preview_map_is_used_outside_result() -> None:
     source = (ROOT / "app.py").read_text(encoding="utf-8")
     assert "max_px=330" in source
     assert "placeholder-room" in source
+
+
+def test_live_generation_trigger_is_explicit_create_button() -> None:
+    source = (ROOT / "app.py").read_text(encoding="utf-8")
+    assert '"Create my room plan"' in source
+    assert "generation_requested = True" in source
+    assert "InteriorDesignAgent(" in source
+
+
+def test_generated_result_prevents_duplicate_generation() -> None:
+    source = (ROOT / "app.py").read_text(encoding="utf-8")
+    assert "if state.generated_result is not None:" in source
+    assert "if not state.generation_requested:" in source
+
+
+def test_right_preview_has_no_furniture_before_result() -> None:
+    source = (ROOT / "app.py").read_text(encoding="utf-8")
+    assert "state.step == ConsultationStep.result and state.generated_result is not None" in source
+
+
+def test_first_screen_has_exactly_two_start_choices() -> None:
+    from interior_agent.ui.chat import START_CHOICES
+
+    assert [choice[0] for choice in START_CHOICES] == ["Design my own room", "Try a demo room"]
+
+
+def test_customer_copy_does_not_use_internal_terms() -> None:
+    source = (ROOT / "app.py").read_text(encoding="utf-8")
+    forbidden = ["Claude", "tool schema", "database brief", "API status", "Sonnet"]
+    assert not any(term in source for term in forbidden)

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from interior_agent.ui.presenter import format_inr, price_copy, sample_display_name
-from interior_agent.ui.state import ConsultationStep, back, brief_ready, feet_to_cm, initial_state, populate_from_sample, reset, to_agent_brief
+from interior_agent.ui.state import ConsultationStep, answer, back, brief_ready, feet_to_cm, initial_state, populate_from_sample, reset, to_agent_brief
 
 
 def test_initial_brief_state() -> None:
@@ -9,6 +9,7 @@ def test_initial_brief_state() -> None:
     assert state.step == ConsultationStep.welcome
     assert state.brief.room_type == "Living Room"
     assert state.developer_mode is False
+    assert state.messages[0].role == "assistant"
 
 
 def test_required_field_readiness() -> None:
@@ -26,8 +27,8 @@ def test_required_field_readiness() -> None:
 
 def test_back_transition_and_reset() -> None:
     state = initial_state()
-    state.step = ConsultationStep.budget
-    state.history.append({"role": "user", "content": "Medium"})
+    state.step = ConsultationStep.room_size
+    answer(state, "Medium", next_to=ConsultationStep.budget)
     back(state)
     assert state.step == ConsultationStep.room_size
     assert state.history[-1]["role"] == "assistant"
@@ -48,7 +49,7 @@ def test_sample_population_hides_id_in_display_name() -> None:
     name = sample_display_name(brief)
     populate_from_sample(state, brief, name)
     assert "BR-01" not in name
-    assert state.step == ConsultationStep.review
+    assert state.step == ConsultationStep.result
     assert state.brief.source_brief_id == "BR-01"
     assert to_agent_brief(state.brief)["room_type"] == "Living Room"
 
