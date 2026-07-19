@@ -4,6 +4,26 @@ Catalog-grounded AI Interior Design Agent for the confidential APM build challen
 
 Live design quality is not claimed until an Anthropic key is supplied and the live eval run is recorded.
 
+## Project Status
+
+- **What's built and working:** the full agent loop (catalog search, budget check, fit check,
+  re-planning, structured JSON output), a deterministic validator that recomputes every guardrail in
+  code rather than trusting the model, a conversational Streamlit UI (full-height dual-pane layout with
+  a resizable panel, alternating assistant/user chat log, a 2D room-layout visualization), and four
+  layers of free-text injection guardrails on customer notes. 119/119 offline tests pass and the 25-case
+  offline fixture harness runs clean. Proof and honest caveats: [`docs/EVAL_RESULTS.md`](docs/EVAL_RESULTS.md).
+- **Eval harness — how to reproduce:** offline (free, no API key): `pytest -q` then
+  `python evals/run_evals.py --offline-fixtures`. Live (costs real API credits, requires
+  `ANTHROPIC_API_KEY`): see [`docs/LIVE_TEST_RUNBOOK.md`](docs/LIVE_TEST_RUNBOOK.md) for the exact,
+  safety-gated commands — start with one case (`--case db-br-01 --skip-judge`) before anything larger.
+- **Decisions and the full project arc:** [`DECISION_LOG.md`](DECISION_LOG.md) — scope choice, live
+  integration, the UI rebuild arc (including a container-nesting bug that shipped silently through
+  several rounds until mandatory screenshot verification caught it), the injection guardrail layers and
+  their honest limits, and what's next.
+- **Known limitations:** see "What Would Break In Production" in [`DECISION_LOG.md`](DECISION_LOG.md#what-would-break-in-production) —
+  in short, no door/window-aware layout, single-shot brief with no revision, no Vastu rules, no
+  delivery/GST pricing, and snapshot-only stock data.
+
 ## Scope
 
 In scope: single-room catalog plans, budget checks, fit checks, stock/lead-time disclosure, unknown-price handling, re-planning after rejected tool calls, and refusals for structural/electrical/plumbing or delivery/price guarantees.
@@ -29,6 +49,14 @@ The system is agentic because the model must call tools, inspect tool results, r
 python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install -r requirements.txt
+```
+
+For local development (adds Playwright, used only by the dev-only `scripts/capture_ui.py` screenshot
+tool — not required to run the app itself and not installed on Streamlit Cloud):
+
+```bash
+python -m pip install -r requirements-dev.txt
+python3 -m playwright install chromium
 ```
 
 For live runs:
@@ -72,21 +100,37 @@ python3 -m streamlit run app.py \
 
 In demo mode the result is generated from real catalog rows and deterministic validation, but no Anthropic client is constructed. In normal mode the live agent is available only after the user reaches review and clicks the primary create-plan action.
 
-## Streamlit Cloud deployment
+## Deploy (Streamlit Community Cloud)
 
-1. Create a new Streamlit Community Cloud app.
-2. Select private repository: `vsultania1375/interior-design-agent`
-3. Branch: `main`
-4. Main file: `app.py`
-5. In Advanced settings -> Secrets, add:
+The repo is deploy-ready as-is; nothing further needs to change in the code. These are the exact
+clicks to connect it, to be done by whoever owns the Streamlit Cloud account:
+
+1. Go to [share.streamlit.io](https://share.streamlit.io) and sign in (GitHub login is simplest, since
+   this repo is private).
+2. Click **"New app"**.
+3. Under **"Deploy a public app from GitHub"** (or "From existing repo"), pick:
+   - Repository: `vsultania1375/interior-design-agent`
+   - Branch: `main`
+   - Main file path: `app.py`
+4. Click **"Advanced settings..."** before deploying, and under **Secrets**, paste:
 
    ```toml
-   ANTHROPIC_API_KEY = "..."
-   ANTHROPIC_MODEL = "..."
+   ANTHROPIC_API_KEY = "your-real-key-here"
+   ANTHROPIC_MODEL = "your-configured-model-id"
    ```
 
-6. Deploy.
-7. Run BR-01 before running the complete eval harness.
+   Use `.streamlit/secrets.toml.example` as the shape reference — never commit a real
+   `.streamlit/secrets.toml` file.
+5. Click **"Deploy"**. Streamlit Cloud installs `requirements.txt` (production dependencies only —
+   `playwright` and other dev/screenshot-testing tools live in `requirements-dev.txt` and are not
+   installed on the deployed app).
+6. The app will be live at a URL of the form `https://<app-name>-<random-suffix>.streamlit.app` (or a
+   custom subdomain if one is claimed during setup). Streamlit Cloud shows the exact URL once the build
+   finishes.
+7. Once live, run the welcome screen and the demo path first (`INTERIOR_UI_DEMO_MODE` is a local-only
+   env var for zero-credit preview — the deployed app runs in normal live mode). Then run one live CLI
+   case (`python cli.py BR-01`, from a local shell with the same key) before running the full eval
+   harness against production, to confirm the deployed key/model combination works end to end.
 
 ## Offline Tests
 
