@@ -230,11 +230,14 @@ def review_qa_pairs(state: ConsultationState) -> list[tuple[str, str]]:
     return pairs
 
 
-def add_review_message(state: ConsultationState) -> None:
+def add_review_message(state: ConsultationState, qa_pairs: list[tuple[str, str]] | None = None) -> None:
+    lines = ["Great — here’s what I understood."]
+    for question, answer_text in qa_pairs or []:
+        lines.append(f"Q: {question}\nA: {answer_text}")
     append_message(
         state,
         "assistant",
-        "Great — here’s what I understood.",
+        "\n\n".join(lines),
         ConsultationStep.review,
         message_type="review",
         stable_key="review",

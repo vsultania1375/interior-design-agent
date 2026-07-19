@@ -86,7 +86,7 @@ def _css() -> None:
         .messages { display:flex; flex-direction:column; gap:.4rem; margin:0; }
         .chat-row { display:flex; }
         .chat-row.user { justify-content:flex-end; }
-        .chat-bubble { max-width:82%; border-radius:15px; padding:.48rem .68rem; font-size:.92rem; line-height:1.34; }
+        .chat-bubble { max-width:82%; border-radius:15px; padding:.48rem .68rem; font-size:.92rem; line-height:1.34; white-space:pre-wrap; }
         .chat-bubble.assistant { background:#f7f0e7; color:#2b2621; border:1px solid #eadfd2; border-bottom-left-radius:6px; }
         .chat-bubble.user { background:#2f6b4f; color:white; border-bottom-right-radius:6px; }
         .st-key-chat_scroll > div:has([class*="st-key-active_card_"]) { margin-top:auto !important; }
@@ -444,7 +444,6 @@ def _context_question(state) -> None:
         state.brief.customer_note = cleaned_note
         text = "There is no special context." if not state.brief.constraints and not state.brief.customer_note else "Important context: " + _join_list(state.brief.constraints + ([state.brief.customer_note] if state.brief.customer_note else [])) + "."
         answer(state, text, next_to=ConsultationStep.review)
-        add_review_message(state)
         _set_state(state)
     close_question_shell()
 
@@ -457,6 +456,7 @@ def _review_question(state, can_run_live: bool) -> None:
     with c1:
         disabled = not ready or (DEMO_MODE and not demo_preview_allowed(state.brief)) or (not DEMO_MODE and not can_run_live) or state.agent_running or state.generated_result is not None
         if st.button("Create my room plan", key="create_plan", type="primary", disabled=disabled, use_container_width=True):
+            add_review_message(state, review_qa_pairs(state))
             state.generation_requested = True
             state.step = ConsultationStep.generating
             _set_state(state)
@@ -546,7 +546,6 @@ def _handle_typed_answer(state, typed: str) -> None:
         values = parse_multi_value_text(text)
         state.brief.customer_note = text
         answer(state, "Important context: " + _join_list(values or [text]) + ".", next_to=ConsultationStep.review)
-        add_review_message(state)
     _set_state(state)
 
 
