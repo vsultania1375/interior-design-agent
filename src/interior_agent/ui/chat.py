@@ -30,6 +30,21 @@ def render_messages(messages: Iterable[ChatMessage]) -> None:
             render_message(message)
 
 
+def render_qa_summary_card(qa_pairs: list[tuple[str, str]]) -> None:
+    pairs_html = "".join(
+        f'<div class="qa-pair"><div class="qa-question">Q: {escape(question)}</div>'
+        f'<div class="qa-answer">A: {escape(answer)}</div></div>'
+        for question, answer in qa_pairs
+    )
+    st.markdown(
+        '<div class="qa-summary-card">'
+        '<div class="qa-summary-intro">Here’s what I understood about your room.</div>'
+        f'{pairs_html}'
+        '</div>',
+        unsafe_allow_html=True,
+    )
+
+
 def render_question_shell(step: ConsultationStep, title: str, helper: str = "") -> None:
     number = step_number(step)
     container = st.container(key=f"active_card_{step.value}", border=True)

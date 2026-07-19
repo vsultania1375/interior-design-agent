@@ -22,12 +22,12 @@ from interior_agent.config import ConfigurationError, Settings  # noqa: E402
 from interior_agent.db import CatalogRepository  # noqa: E402
 from interior_agent.schemas import BOQLine, TraceEntry  # noqa: E402
 from interior_agent.tools import AgentTools  # noqa: E402
-from interior_agent.ui.chat import START_CHOICES, close_question_shell, render_messages, render_question_shell  # noqa: E402
+from interior_agent.ui.chat import START_CHOICES, close_question_shell, render_messages, render_qa_summary_card, render_question_shell  # noqa: E402
 from interior_agent.ui.demo import make_demo_result  # noqa: E402
 from interior_agent.ui.input_parser import parse_budget, parse_dimensions, parse_multi_value_text, parse_style, screen_free_text  # noqa: E402
 from interior_agent.ui.layout import generate_living_room_layout, render_layout_svg  # noqa: E402
 from interior_agent.ui.presenter import availability_copy, brief_summary, format_inr, line_total_copy, normal_result_text, price_copy, sample_display_name  # noqa: E402
-from interior_agent.ui.state import ConsultationStep, add_result_message, add_review_message, answer, back, brief_ready, demo_preview_allowed, developer_mode_allowed, ensure_question_message, initial_state, populate_from_sample, reset, to_agent_brief  # noqa: E402
+from interior_agent.ui.state import ConsultationStep, add_result_message, add_review_message, answer, append_message, back, brief_ready, demo_preview_allowed, developer_mode_allowed, ensure_question_message, initial_state, populate_from_sample, reset, review_qa_pairs, to_agent_brief  # noqa: E402
 from interior_agent.validator import PlanValidator  # noqa: E402
 
 
@@ -117,6 +117,12 @@ def _css() -> None:
         .review-cell { background:#fffdf9; border:1px solid #eee3d7; border-radius:12px; padding:.4rem .55rem; }
         .review-label { color:#746b60; font-size:.74rem; margin-bottom:.08rem; }
         .review-value { color:#2f2923; font-size:.9rem; font-weight:700; line-height:1.2; }
+        .qa-summary-card { border:1px solid #ded5c9; background:#fffaf4; border-radius:16px; padding:.7rem .8rem; margin:.2rem 0 .3rem; }
+        .qa-summary-intro { color:#746b60; font-size:.86rem; margin-bottom:.55rem; }
+        .qa-pair { margin-bottom:.55rem; }
+        .qa-pair:last-child { margin-bottom:0; }
+        .qa-question { color:#746b60; font-size:.82rem; font-weight:600; }
+        .qa-answer { color:#2f2923; font-size:.95rem; font-weight:700; margin-top:.12rem; }
         .st-key-result_card { padding:.8rem !important; margin:.55rem 0 !important; }
         [class*="st-key-product_card_"] { padding:.7rem !important; margin-bottom:.5rem !important; }
         .product-title { font-weight:780; font-size:.97rem; }
@@ -445,7 +451,7 @@ def _context_question(state) -> None:
 
 def _review_question(state, can_run_live: bool) -> None:
     render_question_shell(ConsultationStep.review, "Great — here’s what I understood.", "Create your plan or change one answer.")
-    _review_grid(state)
+    render_qa_summary_card(review_qa_pairs(state))
     ready, _ = brief_ready(state.brief)
     c1, c2 = st.columns([.58, .42])
     with c1:

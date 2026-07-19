@@ -219,6 +219,17 @@ def demo_preview_allowed(brief: BriefState) -> bool:
     return bool(brief.source_brief_id)
 
 
+def review_qa_pairs(state: ConsultationState) -> list[tuple[str, str]]:
+    by_id = {message.id: message for message in state.messages}
+    pairs: list[tuple[str, str]] = []
+    for step in CUSTOMER_STEPS:
+        question = by_id.get(state.answer_message_ids.get(f"question_{step.value}", ""))
+        answer_message = by_id.get(state.answer_message_ids.get(step.value, ""))
+        if question and answer_message:
+            pairs.append((question.content, answer_message.content))
+    return pairs
+
+
 def add_review_message(state: ConsultationState) -> None:
     append_message(
         state,

@@ -24,6 +24,33 @@ LIVE_EVAL_MAX_OUTPUT_TOKENS=20000
 python cli.py BR-01
 ```
 
+## 2a. Browser UI — Live Mode Manual Test
+
+Launch the Streamlit app itself in **live mode** (not demo mode) for manual, click-through testing in a
+browser. This is different from the CLI/eval commands above — it starts the actual customer-facing
+consultation UI, backed by the real agent.
+
+```bash
+python3 -m streamlit run app.py \
+  --server.headless true \
+  --server.address 127.0.0.1 \
+  --server.port 8900
+```
+
+Notes:
+
+- Do **not** set `INTERIOR_UI_DEMO_MODE=1` and do **not** set `INTERIOR_SKIP_DOTENV=1` for this command —
+  leaving both unset is what lets `.env` load normally and the real `ANTHROPIC_API_KEY` resolve.
+- **This mode makes real, billed Anthropic API calls the moment "Create my room plan" is clicked** in
+  the browser, for a custom (non-sample) brief. There is no demo-mode safety net once this command is
+  running with a real key loaded — treat every click of that button as a real spend.
+- Verify health only with `curl -fsS http://127.0.0.1:8900/_stcore/health` before interacting — do not
+  click through the consultation yourself if an agent is doing this handoff; leave the actual
+  "Create my room plan" click to the human who owns the API budget.
+- To go back to the zero-credit demo-mode preview instead, use the separate command documented in
+  `README.md` (`INTERIOR_UI_DEMO_MODE=1`, which forces `api_key=""` and disables custom-brief
+  generation regardless of any key present in `.env`).
+
 ## 3. One Trap Case
 
 ```bash
