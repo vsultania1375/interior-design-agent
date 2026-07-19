@@ -1,0 +1,19 @@
+[project]
+name = "interior-design-agent"
+version = "0.1.0"
+description = "Catalog-grounded AI interior design agent challenge implementation"
+requires-python = ">=3.10"
+dependencies = [
+  "anthropic>=0.117.0",
+  "streamlit>=1.40.0",
+  "pydantic>=2.8.0",
+  "PyYAML>=6.0.2",
+  "python-dotenv>=1.0.1",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.3.0"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src", "evals"]
