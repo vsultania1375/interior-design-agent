@@ -34,6 +34,12 @@ def format_inr(value: int | float | None) -> str:
     return f"{sign}₹{grouped}"
 
 
+def budget_label(value: int | float | None) -> str:
+    if value is None:
+        return "Not added yet"
+    return format_inr(value)
+
+
 def sample_display_name(brief: dict[str, Any]) -> str:
     brief_id = str(brief.get("brief_id") or "")
     return SAMPLE_NAMES.get(brief_id, f"{brief.get('style_preference', 'Practical')} Living Room")
@@ -41,7 +47,7 @@ def sample_display_name(brief: dict[str, Any]) -> str:
 
 def dimensions_label(length_cm: int | None, width_cm: int | None) -> str:
     if not length_cm or not width_cm:
-        return "Room size not set"
+        return "Not added yet"
     return f"{length_cm} × {width_cm} cm"
 
 
@@ -49,10 +55,10 @@ def brief_summary(brief: Any) -> list[tuple[str, str]]:
     return [
         ("Room", "Living room"),
         ("Size", dimensions_label(brief.length_cm, brief.width_cm)),
-        ("Budget", format_inr(brief.budget_inr)),
+        ("Budget", budget_label(brief.budget_inr)),
         ("Style", brief.style_preference or "Not selected"),
-        ("Must-haves", ", ".join(brief.must_haves) if brief.must_haves else "None selected"),
-        ("Constraints", ", ".join(brief.constraints) if brief.constraints else "None"),
+        ("Requirements", ", ".join(brief.must_haves) if brief.must_haves else "None selected"),
+        ("Context", ", ".join(brief.constraints) if brief.constraints else "None added"),
     ]
 
 

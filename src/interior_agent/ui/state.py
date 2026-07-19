@@ -91,6 +91,16 @@ def reset() -> ConsultationState:
     return initial_state()
 
 
+def developer_mode_allowed(environ: dict[str, str], query_params: dict[str, Any] | None = None) -> bool:
+    if environ.get("INTERIOR_SHOW_DEVELOPER_MODE") == "1":
+        return True
+    params = query_params or {}
+    value = params.get("developer")
+    if isinstance(value, list):
+        value = value[0] if value else ""
+    return str(value).lower() in {"1", "true", "yes"}
+
+
 def feet_to_cm(value: float) -> int:
     return int(round(value * 30.48))
 
@@ -125,6 +135,10 @@ def brief_ready(brief: BriefState) -> tuple[bool, list[str]]:
     if not brief.must_haves:
         missing.append("at least one must-have")
     return not missing, missing
+
+
+def demo_preview_allowed(brief: BriefState) -> bool:
+    return bool(brief.source_brief_id)
 
 
 def to_agent_brief(brief: BriefState) -> dict[str, Any]:
