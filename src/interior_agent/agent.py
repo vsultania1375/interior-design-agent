@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Callable, Protocol
 
 from .prompts import SYSTEM_PROMPT, brief_to_text
@@ -19,6 +19,37 @@ class MessagesClient(Protocol):
 
 
 @dataclass
+class UsageTotals:
+    model_calls: int = 0
+    input_tokens: int = 0
+    output_tokens: int = 0
+    cache_read_tokens: int = 0
+    cache_creation_tokens: int = 0
+    unavailable: bool = False
+
+    def add_response(self, response: Any) -> None:
+        self.model_calls += 1
+        usage = getattr(response, "usage", None)
+        if usage is None:
+            self.unavailable = True
+            return
+        self.input_tokens += int(getattr(usage, "input_tokens", 0) or 0)
+        self.output_tokens += int(getattr(usage, "output_tokens", 0) or 0)
+        self.cache_read_tokens += int(getattr(usage, "cache_read_input_tokens", 0) or 0)
+        self.cache_creation_tokens += int(getattr(usage, "cache_creation_input_tokens", 0) or 0)
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "model_calls": self.model_calls,
+            "input_tokens": self.input_tokens,
+            "output_tokens": self.output_tokens,
+            "cache_read_tokens": self.cache_read_tokens,
+            "cache_creation_tokens": self.cache_creation_tokens,
+            "usage_unavailable": self.unavailable,
+        }
+
+
+@dataclass
 class AgentRunResult:
     raw_plan: DesignPlan
     validated: ValidatedPlan
@@ -26,6 +57,7 @@ class AgentRunResult:
     iterations: int
     converged: bool
     loop_issues: list[str]
+    usage: UsageTotals = field(default_factory=UsageTotals)
 
 
 class InteriorDesignAgent:
@@ -37,6 +69,7 @@ class InteriorDesignAgent:
         api_key: str,
         model: str,
         max_iterations: int = 15,
+        max_tokens: int = 3000,
         client: Any | None = None,
     ):
         if client is None and not api_key:
@@ -45,6 +78,7 @@ class InteriorDesignAgent:
         self.validator = validator
         self.model = model
         self.max_iterations = max_iterations
+        self.max_tokens = max_tokens
         if client is None:
             try:
                 from anthropic import Anthropic
@@ -72,12 +106,42 @@ class InteriorDesignAgent:
     @staticmethod
     def _partial_plan_from_trace(brief: dict[str, Any], trace: list[TraceEntry], issues: list[str]) -> DesignPlan:
         last_items: list[dict[str, Any]] = []
+        budget_checked: set[tuple[tuple[str, int], ...]] = set()
+        fit_checked: set[tuple[tuple[str, int], ...]] = set()
+
+        def key(raw_items: Any) -> tuple[tuple[str, int], ...]:
+            if not isinstance(raw_items, list):
+                return ()
+            merged: dict[str, int] = {}
+            for raw in raw_items:
+                if not isinstance(raw, dict):
+                    continue
+                item_id = str(raw.get("item_id", "")).strip().upper()
+                if item_id:
+                    merged[item_id] = merged.get(item_id, 0) + int(raw.get("quantity", 1) or 1)
+            return tuple(sorted(merged.items()))
+
+        for entry in trace:
+            candidate_key = key(entry.input.get("items", []))
+            if entry.tool == "check_budget" and candidate_key:
+                budget_checked.add(candidate_key)
+            elif entry.tool == "check_fit" and candidate_key:
+                fit_checked.add(candidate_key)
+
         for entry in reversed(trace):
             if entry.tool in {"check_budget", "check_fit"}:
-                last_items = entry.input.get("items", [])
-                if isinstance(last_items, list) and last_items:
+                candidate_items = entry.input.get("items", [])
+                candidate_key = key(candidate_items)
+                if candidate_key and candidate_key in budget_checked and candidate_key in fit_checked:
+                    last_items = candidate_items
                     break
-                last_items = []
+        if not last_items:
+            for entry in reversed(trace):
+                if entry.tool in {"check_budget", "check_fit"}:
+                    candidate_items = entry.input.get("items", [])
+                    if isinstance(candidate_items, list) and candidate_items:
+                        last_items = candidate_items
+                        break
         return DesignPlan.model_validate({
             "brief_id": brief.get("brief_id"),
             "room_type": brief.get("room_type", "Unknown"),
@@ -113,12 +177,13 @@ class InteriorDesignAgent:
         converged = False
         iterations = 0
         loop_issues: list[str] = []
+        usage = UsageTotals()
 
         for iteration in range(1, self.max_iterations + 1):
             iterations = iteration
             response = self.client.messages.create(
                 model=self.model,
-                max_tokens=2600,
+                max_tokens=self.max_tokens,
                 system=[{
                     "type": "text",
                     "text": SYSTEM_PROMPT,
@@ -127,6 +192,7 @@ class InteriorDesignAgent:
                 tools=TOOL_SCHEMAS,
                 messages=messages,
             )
+            usage.add_response(response)
             messages.append({"role": "assistant", "content": response.content})
 
             tool_blocks = [block for block in response.content if getattr(block, "type", None) == "tool_use"]
@@ -180,4 +246,5 @@ class InteriorDesignAgent:
             iterations=iterations,
             converged=converged,
             loop_issues=loop_issues,
+            usage=usage,
         )

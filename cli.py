@@ -33,9 +33,9 @@ def main() -> int:
     except ConfigurationError as exc:
         parser.error(str(exc))
     if args.model:
-        settings = Settings(settings.db_path, settings.anthropic_api_key, args.model, settings.max_iterations)
+        settings = Settings(settings.db_path, settings.anthropic_api_key, args.model, settings.max_iterations, settings.anthropic_max_tokens, settings.live_eval_max_output_tokens)
     if args.max_iterations:
-        settings = Settings(settings.db_path, settings.anthropic_api_key, settings.anthropic_model, max(1, min(args.max_iterations, 30)))
+        settings = Settings(settings.db_path, settings.anthropic_api_key, settings.anthropic_model, max(1, min(args.max_iterations, 15)), settings.anthropic_max_tokens, settings.live_eval_max_output_tokens)
     repo = CatalogRepository(settings.db_path)
     if args.list_briefs:
         for brief in repo.list_briefs():
@@ -53,6 +53,7 @@ def main() -> int:
         api_key=settings.anthropic_api_key,
         model=settings.anthropic_model,
         max_iterations=settings.max_iterations,
+        max_tokens=settings.anthropic_max_tokens,
     )
     trace_lines: list[str] = []
     result = agent.run(brief, on_trace=lambda entry: trace_lines.append(f"[{entry.iteration}] {entry.tool}: ok={entry.result.get('ok', entry.result.get('fits', 'n/a'))}"))
@@ -61,6 +62,7 @@ def main() -> int:
         "converged": result.converged,
         "iterations": result.iterations,
         "trace_summary": trace_lines,
+        "usage": result.usage.as_dict(),
         "validated": result.validated.model_dump(mode="json"),
     }
     output = json.dumps(payload if args.json else result.validated.model_dump(mode="json"), indent=2, ensure_ascii=False)

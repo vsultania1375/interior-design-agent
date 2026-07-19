@@ -84,6 +84,7 @@ def deterministic_scores(
         Score("final_budget_checked", "stale_budget_check" not in issue_codes, issue_codes, "Most recent budget check matches the final selected set."),
         Score("final_fit_checked", "stale_fit_check" not in issue_codes, issue_codes, "Most recent fit check matches the final selected set."),
         Score("zero_tool_not_success", "zero_tool_complete" not in issue_codes, issue_codes, "A zero-tool terminal answer is not accepted as complete."),
+        Score("agent_loop_clean", "agent_loop_issue" not in issue_codes, issue_codes, "The agent loop produced a parseable terminal plan before the iteration cap."),
         Score("must_have_coverage", "missing_must_have" not in [c for c in issue_codes if status == "complete"], validated.must_have_result.get("missing", []), "Complete plans cover deterministic must-haves."),
         Score("partial_impossible_honesty", "unexplained_partial" not in issue_codes, status, "Partial/impossible plans explain the limiting constraint."),
     ]

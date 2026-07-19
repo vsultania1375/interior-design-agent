@@ -27,8 +27,17 @@ class ToolBlock:
 
 
 @dataclass
+class Usage:
+    input_tokens: int = 10
+    output_tokens: int = 20
+    cache_read_input_tokens: int = 0
+    cache_creation_input_tokens: int = 0
+
+
+@dataclass
 class Response:
     content: list[Any]
+    usage: Usage | None = None
 
 
 class ScriptedMessages:
@@ -176,6 +185,19 @@ def test_partial_plan_constructed_from_last_checked_candidate_set() -> None:
     assert [item.item_id for item in result.raw_plan.items] == ["SOF-001", "CFT-001"]
 
 
+def test_partial_fallback_prefers_budget_and_fit_checked_candidate_set() -> None:
+    both_checked = [{"item_id": "SOF-001", "quantity": 1}]
+    fit_only = [{"item_id": "SOF-001", "quantity": 1}, {"item_id": "CFT-001", "quantity": 1}]
+    result = make_agent([
+        Response([
+            ToolBlock("1", "check_budget", {"items": both_checked, "budget_inr": 250000}),
+            ToolBlock("2", "check_fit", {"items": both_checked, "room_length_cm": 480, "room_width_cm": 360, "room_type": "Living Room"}),
+            ToolBlock("3", "check_fit", {"items": fit_only, "room_length_cm": 480, "room_width_cm": 360, "room_type": "Living Room"}),
+        ])
+    ], max_iterations=1).run(brief())
+    assert [(item.item_id, item.quantity) for item in result.raw_plan.items] == [("SOF-001", 1)]
+
+
 def test_live_requests_keep_cache_control_under_anthropic_limit() -> None:
     items = [{"item_id": "SOF-001", "quantity": 1}]
     client = ScriptedClient([
@@ -204,3 +226,42 @@ def test_live_requests_keep_cache_control_under_anthropic_limit() -> None:
 
     assert client.messages.requests
     assert max(count_cache_controls(request) for request in client.messages.requests) <= 4
+
+
+def test_live_requests_allow_full_terminal_json_budget() -> None:
+    items = [{"item_id": "SOF-001", "quantity": 1}]
+    client = ScriptedClient([
+        Response([
+            ToolBlock("1", "search_catalog", {"category": "Sofa"}),
+            ToolBlock("2", "check_budget", {"items": items, "budget_inr": 250000}),
+            ToolBlock("3", "check_fit", {"items": items, "room_length_cm": 480, "room_width_cm": 360, "room_type": "Living Room"}),
+        ]),
+        Response([TextBlock(plan(items))]),
+    ])
+    r = repo()
+    agent = InteriorDesignAgent(
+        tools=AgentTools(r),
+        validator=PlanValidator(r),
+        api_key="",
+        model="fake-model",
+        max_iterations=10,
+        client=client,
+    )
+    agent.run(brief())
+    assert client.messages.requests
+    assert all(request["max_tokens"] >= 3000 for request in client.messages.requests)
+
+
+def test_usage_is_accumulated_from_scripted_responses() -> None:
+    items = [{"item_id": "SOF-001", "quantity": 1}]
+    result = make_agent([
+        Response([ToolBlock("1", "search_catalog", {"category": "Sofa"})], Usage(input_tokens=11, output_tokens=22, cache_read_input_tokens=3, cache_creation_input_tokens=4)),
+        Response([ToolBlock("2", "check_budget", {"items": items, "budget_inr": 250000})], Usage(input_tokens=5, output_tokens=6)),
+        Response([ToolBlock("3", "check_fit", {"items": items, "room_length_cm": 480, "room_width_cm": 360, "room_type": "Living Room"})], Usage(input_tokens=7, output_tokens=8)),
+        Response([TextBlock(plan(items))], Usage(input_tokens=9, output_tokens=10)),
+    ]).run(brief())
+    assert result.usage.model_calls == 4
+    assert result.usage.input_tokens == 32
+    assert result.usage.output_tokens == 46
+    assert result.usage.cache_read_tokens == 3
+    assert result.usage.cache_creation_tokens == 4

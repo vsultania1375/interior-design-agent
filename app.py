@@ -99,6 +99,7 @@ if run_clicked:
         api_key=api_key,
         model=configured_model,
         max_iterations=settings.max_iterations,
+        max_tokens=settings.anthropic_max_tokens,
     )
 
     st.subheader("Live agent trace")

@@ -5,7 +5,7 @@ from pathlib import Path
 
 from interior_agent.agent import AgentRunResult
 from interior_agent.db import CatalogRepository
-from interior_agent.schemas import DesignPlan, TraceEntry
+from interior_agent.schemas import DesignPlan, TraceEntry, ValidationIssue
 from interior_agent.tools import AgentTools
 from interior_agent.validator import PlanValidator
 from scorers import deterministic_scores, trace_replanned
@@ -83,3 +83,10 @@ def test_ship_gate_marks_skipped_judge_not_evaluated() -> None:
     gate = aggregate_ship_gate(cases, judge_skipped=True)
     assert gate["metrics"]["judge_overall_4_plus"]["not_evaluated"] is True
     assert gate["overall_passed"] is True
+
+
+def test_agent_loop_issue_is_scored_as_failure() -> None:
+    result = _result([{"item_id": "SOF-001", "quantity": 1}], status="partial")
+    result.validated.issues.append(ValidationIssue(code="agent_loop_issue", severity="error", message="iteration cap"))
+    scores = deterministic_scores(result, {}, {"expect": {}})
+    assert {score.name: score for score in scores}["agent_loop_clean"].passed is False

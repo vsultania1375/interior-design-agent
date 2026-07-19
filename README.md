@@ -88,28 +88,48 @@ Offline fixture reports are written to `eval_results/offline/` and labelled `OFF
 
 ## Live Evals
 
+Full live runs can consume significant credits because one case may involve many model calls, and judge runs add more calls. Run offline tests first, then run one affected case after each change. Do not rerun already passing cases; use `--resume-from` or `--failed-only` when continuing from a saved report.
+
 Single case:
 
 ```bash
 python evals/run_evals.py --case db-br-01 --skip-judge
 ```
 
-Trap set:
+Safe three-case calibration:
 
 ```bash
-python evals/run_evals.py --case db-br-06 --case db-br-07 --case db-br-08 --case db-br-09 --case db-br-10 --case db-br-13 --case db-br-14 --skip-judge
+python evals/run_evals.py \
+  --case db-br-06 \
+  --case db-br-09 \
+  --case db-br-13 \
+  --skip-judge \
+  --confirm-multi-case-live
 ```
 
 Full deterministic/trace run:
 
 ```bash
-python evals/run_evals.py --skip-judge
+python evals/run_evals.py \
+  --all \
+  --skip-judge \
+  --confirm-full-live
 ```
 
 Full run with judge:
 
 ```bash
-python evals/run_evals.py
+python evals/run_evals.py \
+  --all \
+  --confirm-full-live \
+  --confirm-judge-cost
+```
+
+Resume or failed-only:
+
+```bash
+python evals/run_evals.py --resume-from eval_results/results.json --skip-judge --confirm-multi-case-live
+python evals/run_evals.py --failed-only eval_results/results.json --skip-judge --confirm-multi-case-live
 ```
 
 Reports go to `eval_results/results.json` and `eval_results/results.md` unless `--output-dir` is supplied.
@@ -135,7 +155,7 @@ When `--skip-judge` is used, the judge gate is `NOT EVALUATED`, not passed.
 3. `python evals/run_evals.py --offline-fixtures`
 4. Add key to `.env`.
 5. `python cli.py BR-01`
-6. `python evals/run_evals.py --case db-br-06 --case db-br-07 --case db-br-08 --case db-br-09 --case db-br-10 --case db-br-13 --case db-br-14 --skip-judge`
+6. `python evals/run_evals.py --case db-br-06 --skip-judge`
 7. `streamlit run app.py`
 
 ## Limitations

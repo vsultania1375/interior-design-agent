@@ -10,19 +10,28 @@
 - Streamlit loads into a no-key setup state and keeps keys server-side.
 - CLI supports brief listing, model/iteration overrides, JSON output, output file writing, and readable setup errors.
 - Offline checks run locally: compileall, pytest, offline fixture eval, CLI help, brief list, and database integrity checks.
+- Live-eval cost controls are implemented: full runs require explicit `--all --confirm-full-live`, multi-case live runs require confirmation, judge calls require `--confirm-judge-cost`, and usage/cost-guard reporting is wired into eval reports.
+- Existing saved live artifacts were preserved and summarized without regenerating results.
+
+## Live Calibration Observed So Far
+
+- A real-key BR-01 baseline run completed successfully in an earlier session.
+- Two seven-case no-judge trap reports exist from calibration attempts.
+- A later full 25-case live run was interrupted and must not be described as a completed eval.
+- No judge-enabled full evaluation has been completed.
+- No live model quality or ship-gate success is claimed beyond the saved completed reports.
 
 ## Awaiting Anthropic Key/Live Calibration
 
-- Run `python cli.py BR-01` with a real key and inspect the trace.
-- Run the trap-set eval without the judge.
-- Tune only prompt text, tool descriptions, or evidence-backed deterministic thresholds from observed live failures.
-- Run the full 25-case deterministic eval.
-- Run the full judge-enabled eval and record honest pass/fail results.
+- Resume with one affected case at a time.
+- Use `--confirm-multi-case-live` only for intentional two- or three-case calibration batches.
+- Use `--all --confirm-full-live` only when ready for a deliberate full deterministic run.
+- Add `--confirm-judge-cost` only for a deliberate judged run.
+- Tune only prompt text, tool descriptions, parsing robustness, or evidence-backed deterministic thresholds from observed live failures.
 
 ## Awaiting User-Owned Deployment/Recording Actions
 
-- Create or update the private repository.
 - Configure deployment secrets in Streamlit Cloud or the chosen private deployment target.
 - Deploy the app.
 - Record the demo.
-- Attach live eval report and disclose any failed cases.
+- Attach the completed live eval report and disclose any failed cases.

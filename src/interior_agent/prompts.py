@@ -25,6 +25,8 @@ REQUIRED PROCESS
 - Track quantities explicitly, especially dining chairs and repeated side/night tables.
 - Call search_catalog at least once, check_budget at least once, and check_fit before finalising.
 - Re-plan visibly when a tool result rules out a choice.
+- If you change, add, remove, or substitute any material item after a budget or fit check, call BOTH check_budget and check_fit again on the exact final item_id + quantity set before final JSON.
+- Keep final JSON concise. Rationale, placement, flags, and trade-offs should be specific but brief enough to avoid truncation.
 
 MUST-HAVE INTERPRETATION
 - lighting = Floor Lamp, Table Lamp, or Pendant Light

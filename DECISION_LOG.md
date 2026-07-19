@@ -18,6 +18,8 @@ Plain Python tools were used instead of MCP or RAG because the challenge data is
 
 Catalog membership, quantities, budget totals, unknown prices, stock, lead time, fit, final trace consistency, must-have coverage, duplicate item IDs, and required refusals are recomputed in code. The model is not trusted to self-certify those guardrails.
 
+Live integration added SDK compatibility handling for tool-schema/cache behavior and confirmed BR-01 can complete with a real Anthropic key. Cost controls now prevent accidental full live runs: one explicit case is allowed, multi-case and full runs require explicit confirmation flags, judge calls require a separate confirmation, and usage totals are reported when Anthropic returns them.
+
 ## Fit and Data Limits
 
 Fit is an empty-rectangle heuristic with category clearances and occupancy thresholds. It is not a floor plan and does not know doors, windows, columns, services, exact placement, accessibility, or installation constraints. Unknown prices stay price-on-request and cannot support a guaranteed complete within-budget plan. Out-of-stock products must be omitted or clearly described as unavailable references.
@@ -28,8 +30,8 @@ Customer notes are included as data inside the brief. System instructions and va
 
 ## Still Unverified
 
-No live Anthropic model quality is claimed yet. Remaining uncertainty is live tool selection, prompt adherence, JSON reliability, re-planning consistency, and judge-scored style/rationale quality.
+Live BR-01 passed in an earlier calibration session, and saved trap-set reports exist, but the full 25-case run was interrupted and no judged run has completed. The project does not yet claim full live ship-gate success. Remaining uncertainty is live tool selection across all cases, prompt adherence, JSON reliability, re-planning consistency, and judge-scored style/rationale quality.
 
 ## Next
 
-With a key: run BR-01, run trap cases, calibrate prompt/tool descriptions from observed failures, run the full deterministic eval, run the judge eval, deploy privately, and record the demo.
+With a key: run one affected case, use explicit confirmation flags for intentional calibration batches, run the full deterministic eval only with `--all --confirm-full-live`, run the judge eval only with `--confirm-judge-cost`, deploy privately, and record the demo.
