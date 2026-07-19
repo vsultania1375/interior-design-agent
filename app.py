@@ -27,7 +27,7 @@ from interior_agent.ui.demo import make_demo_result  # noqa: E402
 from interior_agent.ui.input_parser import parse_budget, parse_dimensions, parse_multi_value_text, parse_style, screen_free_text  # noqa: E402
 from interior_agent.ui.layout import generate_living_room_layout, render_layout_svg  # noqa: E402
 from interior_agent.ui.presenter import advisory_message_text, availability_copy, brief_summary, format_inr, line_total_copy, normal_result_text, price_copy, sample_display_name  # noqa: E402
-from interior_agent.ui.state import ConsultationStep, add_result_message, add_submitted_answers_message, answer, append_message, back, brief_ready, demo_preview_allowed, developer_mode_allowed, initial_state, populate_from_sample, record_step_answer, reset, review_qa_pairs, to_agent_brief  # noqa: E402
+from interior_agent.ui.state import ConsultationStep, add_feedback_message, add_result_message, add_submitted_answers_message, answer, append_message, back, brief_ready, demo_preview_allowed, developer_mode_allowed, initial_state, populate_from_sample, record_step_answer, reset, review_qa_pairs, to_agent_brief  # noqa: E402
 from interior_agent.validator import PlanValidator  # noqa: E402
 
 
@@ -405,7 +405,7 @@ def _requirements_question(state) -> None:
         st.caption(f"{len(other)}/{NOTE_MAX_CHARS} characters")
     if st.button("Continue", key="req_continue", type="primary"):
         values = [item for item in state.brief.must_haves if item != "Something else"]
-        cleaned_other, flagged = screen_free_text(other.strip()[:NOTE_MAX_CHARS])
+        cleaned_other, flagged = _apply_free_text_guardrails(other)
         if flagged:
             st.toast("That note couldn't be included, but the rest of your plan will proceed as entered.")
         elif cleaned_other:
@@ -442,7 +442,7 @@ def _context_question(state) -> None:
     st.caption(f"{len(note)}/{NOTE_MAX_CHARS} characters")
     if st.button("Review my answers", key="ctx_continue", type="primary"):
         state.brief.constraints = [] if "No special constraint" in current else list(current)
-        cleaned_note, flagged = screen_free_text(note.strip()[:NOTE_MAX_CHARS])
+        cleaned_note, flagged = _apply_free_text_guardrails(note)
         if flagged:
             st.toast("That note couldn't be included, but the rest of your plan will proceed as entered.")
         state.brief.customer_note = cleaned_note
@@ -497,12 +497,15 @@ def _review_grid(state) -> None:
 
 
 def _composer(state) -> None:
-    if state.step in {ConsultationStep.sample_or_custom, ConsultationStep.generating, ConsultationStep.result}:
+    if state.step in {ConsultationStep.sample_or_custom, ConsultationStep.generating}:
         return
+    is_feedback = state.step == ConsultationStep.result
+    placeholder = "Want changes? Describe them here…" if is_feedback else "Or type your answer…"
     with st.container(key="composer"):
         c1, c2 = st.columns([.82, .18])
         with c1:
-            typed = st.text_input("Typed answer", placeholder="Or type your answer…", label_visibility="collapsed", key=f"composer_{state.step.value}")
+            max_chars = NOTE_MAX_CHARS if is_feedback else None
+            typed = st.text_input("Typed answer", placeholder=placeholder, label_visibility="collapsed", key=f"composer_{state.step.value}", max_chars=max_chars)
         with c2:
             sent = st.button("Send", key=f"send_{state.step.value}", type="primary", use_container_width=True)
         if sent:
@@ -550,7 +553,28 @@ def _handle_typed_answer(state, typed: str) -> None:
         values = parse_multi_value_text(text)
         state.brief.customer_note = text
         record_step_answer(state, "Anything important about how you use the room?", "Important context: " + _join_list(values or [text]) + ".", next_to=ConsultationStep.review)
+    elif state.step == ConsultationStep.result:
+        _handle_result_feedback(state, text)
     _set_state(state)
+
+
+def _handle_result_feedback(state, text: str) -> None:
+    if DEMO_MODE:
+        st.toast("Custom plan generation is available in live mode.")
+        return
+    cleaned_feedback, flagged = _apply_free_text_guardrails(text)
+    if flagged or not cleaned_feedback:
+        st.toast("That note couldn't be included, but the rest of your plan will proceed as entered.")
+        return
+    add_feedback_message(state, cleaned_feedback)
+    state.pending_feedback = cleaned_feedback
+    state.generation_requested = True
+    state.step = ConsultationStep.generating
+
+
+def _apply_free_text_guardrails(raw_text: str) -> tuple[str, bool]:
+    """Shared guardrail path for any free-text field: 300-char cap, then injection screen."""
+    return screen_free_text(raw_text.strip()[:NOTE_MAX_CHARS])
 
 
 def _join_list(values: list[str]) -> str:
@@ -571,11 +595,9 @@ def _progress_label(entry: TraceEntry) -> str:
 
 
 def _run_generation(state, repo: CatalogRepository, settings: Settings, api_key: str, model: str) -> None:
-    if state.generated_result is not None:
-        state.step = ConsultationStep.result
-        return
+    had_prior_result = state.generated_result is not None
     if not state.generation_requested:
-        state.step = ConsultationStep.review
+        state.step = ConsultationStep.result if had_prior_result else ConsultationStep.review
         return
     state.agent_running = True
     progress = st.empty()
@@ -584,6 +606,8 @@ def _run_generation(state, repo: CatalogRepository, settings: Settings, api_key:
         progress.markdown(f'<div class="progress-status">{escape(text)}</div>', unsafe_allow_html=True)
 
     brief = to_agent_brief(state.brief)
+    if state.pending_feedback:
+        brief["customer_note"] = (brief["customer_note"] + " Follow-up refinement request: " + state.pending_feedback).strip()
     try:
         if DEMO_MODE:
             if not demo_preview_allowed(state.brief):
@@ -612,13 +636,15 @@ def _run_generation(state, repo: CatalogRepository, settings: Settings, api_key:
         add_result_message(state, advisory_message_text(result.validated))
         state.step = ConsultationStep.result
     except Exception as exc:
-        append_message(state, "assistant", "We couldn’t finish your plan right now. Your room details are still here.", ConsultationStep.generating, message_type="error", stable_key="generation_error")
+        error_text = "We couldn’t apply that change right now. Your previous plan is still shown below." if had_prior_result else "We couldn’t finish your plan right now. Your room details are still here."
+        append_message(state, "assistant", error_text, ConsultationStep.generating, message_type="error", stable_key="generation_error")
         if st.session_state.get("developer_mode_enabled"):
             st.exception(exc)
-        state.step = ConsultationStep.review
+        state.step = ConsultationStep.result if had_prior_result else ConsultationStep.review
     finally:
         state.agent_running = False
         state.generation_requested = False
+        state.pending_feedback = ""
         _set_state(state)
 
 

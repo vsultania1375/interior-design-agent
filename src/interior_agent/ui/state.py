@@ -79,6 +79,7 @@ class ConsultationState:
     step_answers: dict[str, dict[str, str]] = field(default_factory=dict)
     generation_requested: bool = False
     agent_running: bool = False
+    pending_feedback: str = ""
 
     @property
     def history(self) -> list[dict[str, str]]:
@@ -244,6 +245,11 @@ def add_submitted_answers_message(state: ConsultationState, qa_pairs: list[tuple
     )
 
 
+def add_feedback_message(state: ConsultationState, feedback_text: str) -> None:
+    # No stable_key: every feedback submission is its own new message.
+    append_message(state, "user", feedback_text, state.step, message_type="feedback")
+
+
 def add_review_message(state: ConsultationState, qa_pairs: list[tuple[str, str]] | None = None) -> None:
     lines = ["Great — here’s what I understood."]
     for question, answer_text in qa_pairs or []:
@@ -259,13 +265,14 @@ def add_review_message(state: ConsultationState, qa_pairs: list[tuple[str, str]]
 
 
 def add_result_message(state: ConsultationState, summary_text: str | None = None) -> None:
+    # No stable_key: each generation (including a later regeneration after user
+    # feedback) appends a fresh message rather than overwriting the prior one.
     append_message(
         state,
         "assistant",
         summary_text or "Your room plan is ready.",
         ConsultationStep.result,
         message_type="result",
-        stable_key="result",
     )
 
 
