@@ -32,7 +32,9 @@ def render_messages(messages: Iterable[ChatMessage]) -> None:
 
 def render_question_shell(step: ConsultationStep, title: str, helper: str = "") -> None:
     number = step_number(step)
-    st.markdown('<div class="active-card">', unsafe_allow_html=True)
+    container = st.container(key=f"active_card_{step.value}", border=True)
+    container.__enter__()
+    st.session_state["_active_card_cm"] = container
     st.markdown(
         f'<div class="active-head"><span>{escape(title)}</span><span>{number} of 5</span></div>',
         unsafe_allow_html=True,
@@ -42,4 +44,6 @@ def render_question_shell(step: ConsultationStep, title: str, helper: str = "") 
 
 
 def close_question_shell() -> None:
-    st.markdown("</div>", unsafe_allow_html=True)
+    container = st.session_state.pop("_active_card_cm", None)
+    if container is not None:
+        container.__exit__(None, None, None)

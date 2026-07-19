@@ -37,42 +37,43 @@ def _css() -> None:
         """
         <style>
         #MainMenu, footer, header, [data-testid="stToolbar"], [data-testid="stDecoration"], [data-testid="stStatusWidget"] { display:none !important; }
+        html, body { height:100%; }
         .stApp { background:#f6f1e9; color:#26221e; }
-        .block-container { padding:.55rem 1.1rem 1.4rem; max-width:1180px; }
+        .block-container { padding:.4rem 1.1rem .6rem; max-width:1180px; }
         [data-testid="stSidebar"] { display:none; }
-        .topbar { display:flex; justify-content:space-between; align-items:center; min-height:38px; margin-bottom:.45rem; }
+        .topbar { display:flex; justify-content:space-between; align-items:center; min-height:34px; margin-bottom:.3rem; }
         .brand { display:flex; align-items:center; gap:.55rem; font-weight:760; font-size:1rem; }
         .mark { width:28px; height:28px; border-radius:9px; background:#2f6b4f; color:white; display:inline-flex; align-items:center; justify-content:center; font-size:14px; }
         .preview-mode { color:#736a60; font-size:.82rem; margin-right:.6rem; }
         .app-grid { align-items:start; }
-        .chat-panel, .side-panel, .result-card, .product-card { background:#fffdf9; border:1px solid #e4dbcf; border-radius:16px; box-shadow:0 14px 34px rgba(71,55,38,.07); }
-        .chat-panel { padding:.85rem; min-height:660px; display:flex; flex-direction:column; }
-        .side-panel { padding:.85rem; }
-        .intro { padding:.35rem .2rem .55rem; }
-        .intro h1 { font-size:1.55rem; margin:.1rem 0 .25rem; line-height:1.08; }
-        .intro p { color:#695f55; margin:0; font-size:.94rem; }
-        .trust-row { display:flex; flex-wrap:wrap; gap:.35rem; margin-top:.5rem; }
+        .st-key-chat_panel, .st-key-side_panel, .st-key-result_card, [class*="st-key-product_card_"] { background:#fffdf9; border:1px solid #e4dbcf; border-radius:16px; box-shadow:0 14px 34px rgba(71,55,38,.07); }
+        .st-key-chat_panel { padding:.65rem .85rem; display:flex; flex-direction:column; gap:.4rem !important; }
+        .st-key-side_panel { padding:.85rem; }
+        .intro { padding:.15rem .2rem .35rem; }
+        .intro h1 { font-size:1.3rem; margin:.05rem 0 .2rem; line-height:1.08; }
+        .intro p { color:#695f55; margin:0; font-size:.86rem; }
+        .trust-row { display:flex; flex-wrap:wrap; gap:.35rem; margin-top:.35rem; }
         .pill, .badge { display:inline-flex; align-items:center; border:1px solid #ded5c9; border-radius:999px; padding:.22rem .52rem; background:#fffaf3; color:#5d544a; font-size:.78rem; }
         .badge-green { background:#edf8f0; border-color:#b8ddc0; color:#27633a; }
         .badge-amber { background:#fff8e5; border-color:#e7ce91; color:#725617; }
         .badge-red { background:#fff0ee; border-color:#ebb5ad; color:#8a2f24; }
-        .messages { display:flex; flex-direction:column; gap:.42rem; margin:.2rem 0 .62rem; }
+        .messages { display:flex; flex-direction:column; gap:.4rem; margin:0; }
         .chat-row { display:flex; }
         .chat-row.user { justify-content:flex-end; }
         .chat-bubble { max-width:82%; border-radius:15px; padding:.48rem .68rem; font-size:.92rem; line-height:1.34; }
         .chat-bubble.assistant { background:#f7f0e7; color:#2b2621; border:1px solid #eadfd2; border-bottom-left-radius:6px; }
         .chat-bubble.user { background:#2f6b4f; color:white; border-bottom-right-radius:6px; }
-        .active-card { border:1px solid #ded5c9; background:#fffaf4; border-radius:16px; padding:.75rem; margin:.2rem 0 .55rem; }
-        .active-head { display:flex; justify-content:space-between; gap:1rem; color:#28231f; font-weight:780; font-size:1.05rem; }
+        [class*="st-key-active_card_"] { border:1px solid #ded5c9 !important; background:#fffaf4 !important; border-radius:16px !important; padding:.6rem .7rem !important; margin:.2rem 0 .3rem !important; }
+        .active-head { display:flex; justify-content:space-between; gap:1rem; color:#28231f; font-weight:780; font-size:1.02rem; }
         .active-head span:last-child { color:#2f6b4f; font-size:.82rem; white-space:nowrap; }
-        .active-helper { color:#746b60; font-size:.86rem; margin:.18rem 0 .52rem; }
-        div.stButton > button { border-radius:12px; border:1px solid #ded5c9; background:#fffefb; color:#28231f; min-height:2.55rem; box-shadow:0 5px 13px rgba(71,55,38,.04); font-size:.9rem; line-height:1.17; white-space:pre-wrap; text-align:left; padding:.42rem .62rem; }
+        .active-helper { color:#746b60; font-size:.86rem; margin:.16rem 0 .4rem; }
+        div.stButton > button { border-radius:12px; border:1px solid #ded5c9; background:#fffefb; color:#28231f; min-height:2.3rem; box-shadow:0 5px 13px rgba(71,55,38,.04); font-size:.88rem; line-height:1.15; white-space:pre-wrap; text-align:left; padding:.32rem .58rem; }
         div.stButton > button:hover, div.stButton > button:focus { border-color:#2f6b4f; box-shadow:0 0 0 3px rgba(47,107,79,.13); color:#20392d; }
-        div.stButton > button[kind="primary"] { background:#2f6b4f; border-color:#2f6b4f; color:white; text-align:center; min-height:2.55rem; }
-        .top-action div.stButton > button { min-height:2.25rem; box-shadow:none; background:#fffaf3; font-size:.82rem; text-align:center; padding:.3rem .6rem; }
-        .row-button div.stButton > button { width:100%; min-height:2.7rem; }
-        .composer { margin-top:auto; border-top:1px solid #efe5d9; padding-top:.55rem; }
-        .composer div.stTextInput input { border-radius:999px !important; border-color:#ded5c9 !important; background:#fffefb !important; min-height:2.55rem; }
+        div.stButton > button[kind="primary"] { background:#2f6b4f; border-color:#2f6b4f; color:white; text-align:center; min-height:2.3rem; }
+        .st-key-top_action div.stButton > button { min-height:2.05rem; box-shadow:none; background:#fffaf3; font-size:.82rem; text-align:center; padding:.3rem .6rem; }
+        .row-button div.stButton > button { width:100%; min-height:2.4rem; }
+        .st-key-composer { margin-top:auto; border-top:1px solid #efe5d9; padding-top:.4rem; }
+        .st-key-composer div.stTextInput input { border-radius:999px !important; border-color:#ded5c9 !important; background:#fffefb !important; min-height:2.3rem; }
         .compact-note { color:#746b60; font-size:.8rem; margin:.3rem 0 0; }
         .side-title { color:#2f6b4f; font-weight:780; font-size:.95rem; margin-bottom:.15rem; }
         .side-copy { color:#736a60; font-size:.86rem; margin-bottom:.55rem; }
@@ -81,14 +82,16 @@ def _css() -> None:
         .kv span:first-child { color:#736a5f; }
         .kv span:last-child { text-align:right; font-weight:690; color:#2f2923; }
         .placeholder-room { height:145px; border:1px dashed #d8cfc3; border-radius:14px; background:linear-gradient(135deg,#fffdf9,#f7f0e6); display:flex; align-items:center; justify-content:center; color:#6d6358; text-align:center; padding:.8rem; font-size:.88rem; margin-top:.55rem; }
+        .compact-preview-svg { max-width:260px; margin:.4rem auto 0; }
+        .compact-preview-svg svg { width:100%; height:auto; display:block; }
         .room-sketch { width:96px; height:66px; border:2px solid #d6c7b4; border-radius:10px; margin:0 auto .45rem; position:relative; }
         .room-sketch:after { content:""; position:absolute; width:32px; height:19px; border:2px solid #b8a78f; border-radius:7px; left:30px; top:22px; }
-        .review-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.4rem; margin:.45rem 0 .65rem; }
-        .review-cell { background:#fffdf9; border:1px solid #eee3d7; border-radius:12px; padding:.45rem .55rem; }
+        .review-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.35rem; margin:.3rem 0 .4rem; }
+        .review-cell { background:#fffdf9; border:1px solid #eee3d7; border-radius:12px; padding:.4rem .55rem; }
         .review-label { color:#746b60; font-size:.74rem; margin-bottom:.08rem; }
         .review-value { color:#2f2923; font-size:.9rem; font-weight:700; line-height:1.2; }
-        .result-card { padding:.8rem; margin:.55rem 0; }
-        .product-card { padding:.7rem; margin-bottom:.5rem; }
+        .st-key-result_card { padding:.8rem !important; margin:.55rem 0 !important; }
+        [class*="st-key-product_card_"] { padding:.7rem !important; margin-bottom:.5rem !important; }
         .product-title { font-weight:780; font-size:.97rem; }
         .product-meta { color:#746b60; font-size:.82rem; }
         .shape-icon { width:30px; height:21px; display:inline-block; border-radius:7px; background:#d8b980; border:1px solid #a88b50; vertical-align:middle; margin-right:.42rem; }
@@ -98,8 +101,23 @@ def _css() -> None:
         button[data-baseweb="tab"][aria-selected="true"] { color:#2f6b4f; background:#fffdf9; }
         @media (max-width:760px) {
           .block-container { padding:.55rem .8rem 1rem; }
-          .chat-panel { min-height:auto; }
           .review-grid { grid-template-columns:1fr; }
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def _lock_viewport(locked: bool) -> None:
+    if not locked:
+        return
+    st.markdown(
+        """
+        <style>
+        html, body, .stApp, [data-testid="stAppViewContainer"], [data-testid="stMain"] {
+            height:100vh !important;
+            overflow:hidden !important;
         }
         </style>
         """,
@@ -136,10 +154,9 @@ def _topbar(state, demo_mode: bool, developer_available: bool) -> None:
             if demo_mode:
                 st.markdown('<div style="text-align:right;"><span class="preview-mode">Preview mode</span></div>', unsafe_allow_html=True)
         with b:
-            st.markdown('<div class="top-action">', unsafe_allow_html=True)
-            if st.button("Start over", key="top_start_over", use_container_width=True):
-                _set_state(reset())
-            st.markdown("</div>", unsafe_allow_html=True)
+            with st.container(key="top_action"):
+                if st.button("Start over", key="top_start_over", use_container_width=True):
+                    _set_state(reset())
     if developer_available:
         st.session_state["developer_mode_enabled"] = st.toggle("Developer Mode", value=st.session_state.get("developer_mode_enabled", False))
     else:
@@ -384,15 +401,14 @@ def _review_grid(state) -> None:
 def _composer(state) -> None:
     if state.step in {ConsultationStep.sample_or_custom, ConsultationStep.generating, ConsultationStep.result}:
         return
-    st.markdown('<div class="composer">', unsafe_allow_html=True)
-    c1, c2 = st.columns([.82, .18])
-    with c1:
-        typed = st.text_input("Typed answer", placeholder="Or type your answer…", label_visibility="collapsed", key=f"composer_{state.step.value}")
-    with c2:
-        sent = st.button("Send", key=f"send_{state.step.value}", type="primary", use_container_width=True)
-    if sent:
-        _handle_typed_answer(state, typed)
-    st.markdown("</div>", unsafe_allow_html=True)
+    with st.container(key="composer"):
+        c1, c2 = st.columns([.82, .18])
+        with c1:
+            typed = st.text_input("Typed answer", placeholder="Or type your answer…", label_visibility="collapsed", key=f"composer_{state.step.value}")
+        with c2:
+            sent = st.button("Send", key=f"send_{state.step.value}", type="primary", use_container_width=True)
+        if sent:
+            _handle_typed_answer(state, typed)
 
 
 def _handle_typed_answer(state, typed: str) -> None:
@@ -524,22 +540,21 @@ def _result_sections(state, repo: CatalogRepository) -> None:
     validated = result.validated
     text = normal_result_text(validated)
     status_ok = validated.is_valid and validated.plan.status.value == "complete" and result.converged
-    st.markdown('<div class="result-card">', unsafe_allow_html=True)
-    st.markdown(f"<strong>{escape(text['title'])}</strong>")
-    st.write(text["summary"])
-    st.markdown(
-        " ".join([
-            f'<span class="badge {"badge-green" if validated.fit_result.get("fits") else "badge-amber"}">{"Fits your room" if validated.fit_result.get("fits") else "Fit needs review"}</span>',
-            f'<span class="badge {"badge-green" if not validated.over_budget else "badge-red"}">{"Within budget" if not validated.over_budget else "Over budget"}</span>',
-            f'<span class="badge {"badge-green" if status_ok else "badge-amber"}">{"Requirements covered" if status_ok else "Review trade-offs"}</span>',
-        ]),
-        unsafe_allow_html=True,
-    )
-    c1, c2, c3 = st.columns(3)
-    c1.metric("Estimated cost", text["estimated_cost"])
-    c2.metric(text["remaining_label"], text["remaining"])
-    c3.metric("Products", text["product_count"])
-    st.markdown("</div>", unsafe_allow_html=True)
+    with st.container(key="result_card"):
+        st.markdown(f"<strong>{escape(text['title'])}</strong>", unsafe_allow_html=True)
+        st.write(text["summary"])
+        st.markdown(
+            " ".join([
+                f'<span class="badge {"badge-green" if validated.fit_result.get("fits") else "badge-amber"}">{"Fits your room" if validated.fit_result.get("fits") else "Fit needs review"}</span>',
+                f'<span class="badge {"badge-green" if not validated.over_budget else "badge-red"}">{"Within budget" if not validated.over_budget else "Over budget"}</span>',
+                f'<span class="badge {"badge-green" if status_ok else "badge-amber"}">{"Requirements covered" if status_ok else "Review trade-offs"}</span>',
+            ]),
+            unsafe_allow_html=True,
+        )
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Estimated cost", text["estimated_cost"])
+        c2.metric(text["remaining_label"], text["remaining"])
+        c3.metric("Products", text["product_count"])
     tab_layout, tab_shop, tab_budget, tab_details = st.tabs(["Room Layout", "Shopping List", "Budget", "Details"])
     with tab_layout:
         layout = generate_living_room_layout(
@@ -550,19 +565,18 @@ def _result_sections(state, repo: CatalogRepository) -> None:
         st.markdown(render_layout_svg(layout), unsafe_allow_html=True)
         st.markdown('<div class="compact-note">Conceptual layout based on an empty rectangular room. Doors, windows, columns and electrical points are not represented. Confirm site conditions before purchase or installation.</div>', unsafe_allow_html=True)
     with tab_shop:
-        for line in validated.boq:
-            st.markdown('<div class="product-card">', unsafe_allow_html=True)
-            st.markdown(f'<div class="product-title"><span class="shape-icon"></span>{escape(line.name)}</div>', unsafe_allow_html=True)
-            st.markdown(f'<div class="product-meta">{escape(line.category)} • {escape(line.item_id)}</div>', unsafe_allow_html=True)
-            cols = st.columns(3)
-            cols[0].write(f"Quantity: **{line.quantity}**")
-            cols[1].write(f"Price: **{price_copy(line)}**")
-            cols[2].write(availability_copy(line))
-            st.write(f"Dimensions: {line.dimensions_cm} cm")
-            st.write(line.rationale)
-            if line.placement_note:
-                st.caption(line.placement_note)
-            st.markdown("</div>", unsafe_allow_html=True)
+        for index, line in enumerate(validated.boq):
+            with st.container(key=f"product_card_{index}"):
+                st.markdown(f'<div class="product-title"><span class="shape-icon"></span>{escape(line.name)}</div>', unsafe_allow_html=True)
+                st.markdown(f'<div class="product-meta">{escape(line.category)} • {escape(line.item_id)}</div>', unsafe_allow_html=True)
+                cols = st.columns(3)
+                cols[0].write(f"Quantity: **{line.quantity}**")
+                cols[1].write(f"Price: **{price_copy(line)}**")
+                cols[2].write(availability_copy(line))
+                st.write(f"Dimensions: {line.dimensions_cm} cm")
+                st.write(line.rationale)
+                if line.placement_note:
+                    st.caption(line.placement_note)
     with tab_budget:
         budget = max(validated.plan.budget_inr, 1)
         st.progress(min(max(validated.known_total_inr, 0) / budget, 1.0), text=f"{format_inr(validated.known_total_inr)} of {format_inr(budget)}")
@@ -594,12 +608,11 @@ def _result_sections(state, repo: CatalogRepository) -> None:
 
 
 def _side_panel(state, repo: CatalogRepository) -> None:
-    st.markdown('<div class="side-panel">', unsafe_allow_html=True)
-    st.markdown('<div class="side-title">Your room preview</div>', unsafe_allow_html=True)
-    st.markdown('<div class="side-copy">Complete the consultation to build your plan.</div>', unsafe_allow_html=True)
-    for label, value in brief_summary(state.brief):
-        st.markdown(f'<div class="kv"><span>{escape(label)}</span><span>{escape(value)}</span></div>', unsafe_allow_html=True)
-    st.markdown("</div>", unsafe_allow_html=True)
+    with st.container(key="side_panel"):
+        st.markdown('<div class="side-title">Your room preview</div>', unsafe_allow_html=True)
+        st.markdown('<div class="side-copy">Complete the consultation to build your plan.</div>', unsafe_allow_html=True)
+        for label, value in brief_summary(state.brief):
+            st.markdown(f'<div class="kv"><span>{escape(label)}</span><span>{escape(value)}</span></div>', unsafe_allow_html=True)
     if state.step == ConsultationStep.result and state.generated_result is not None:
         validated = state.generated_result.validated
         layout = generate_living_room_layout(
@@ -610,7 +623,7 @@ def _side_panel(state, repo: CatalogRepository) -> None:
         st.markdown(render_layout_svg(layout, max_px=360, min_width=230, min_height=155), unsafe_allow_html=True)
     elif state.brief.length_cm and state.brief.width_cm:
         layout = generate_living_room_layout(state.brief.length_cm, state.brief.width_cm, [])
-        st.markdown(render_layout_svg(layout, max_px=330, min_width=220, min_height=145), unsafe_allow_html=True)
+        st.markdown(f'<div class="compact-preview-svg">{render_layout_svg(layout, max_px=330, min_width=220, min_height=145)}</div>', unsafe_allow_html=True)
         st.caption("Furniture placement will appear after your plan is created.")
     else:
         st.markdown(
@@ -666,21 +679,23 @@ def main() -> None:
     model = secret_model or settings.anthropic_model
     state = _state()
     developer_available = developer_mode_allowed(os.environ, dict(st.query_params))
+    _lock_viewport(state.step != ConsultationStep.result)
     _topbar(state, DEMO_MODE, developer_available)
     left, right = st.columns([0.58, 0.42], gap="large")
     with left:
-        st.markdown('<div class="chat-panel">', unsafe_allow_html=True)
-        _intro()
-        _messages(state)
-        if state.step != ConsultationStep.result:
-            _active_question(state, repo, settings, api_key, model, bool(api_key))
-            if state.step not in {ConsultationStep.welcome, ConsultationStep.sample_or_custom, ConsultationStep.generating}:
-                if st.button("Back", key="chat_back"):
-                    _set_state(back(state))
-        else:
-            _result_sections(state, repo)
-        _composer(state)
-        st.markdown("</div>", unsafe_allow_html=True)
+        with st.container(key="chat_panel"):
+            if state.step == ConsultationStep.welcome:
+                _intro()
+            with st.container(key="message_log", height=90, border=False):
+                _messages(state)
+            if state.step != ConsultationStep.result:
+                _active_question(state, repo, settings, api_key, model, bool(api_key))
+                if state.step not in {ConsultationStep.welcome, ConsultationStep.sample_or_custom, ConsultationStep.generating}:
+                    if st.button("Back", key="chat_back"):
+                        _set_state(back(state))
+            else:
+                _result_sections(state, repo)
+            _composer(state)
     with right:
         _side_panel(state, repo)
 

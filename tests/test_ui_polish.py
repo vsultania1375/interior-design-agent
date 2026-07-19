@@ -76,7 +76,7 @@ def test_compact_start_over_exists_in_topbar_only() -> None:
     source = (ROOT / "app.py").read_text(encoding="utf-8")
     assert source.count("Start over") == 1
     assert "top_start_over" in source
-    assert "top-action" in source
+    assert 'st.container(key="top_action")' in source
 
 
 def test_review_helper_note_is_compact_not_info_alert() -> None:
