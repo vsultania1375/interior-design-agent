@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 
 from interior_agent.db import CatalogRepository
-from interior_agent.tools import AgentTools
+from interior_agent.tools import AgentTools, TOOL_SCHEMAS
 
 
 @pytest.fixture()
@@ -95,3 +95,17 @@ def test_six_seater_table_passes_br13_room(tools: AgentTools) -> None:
         room_type="Dining",
     )
     assert result["fits"] is True
+
+
+def test_anthropic_tool_schemas_avoid_unsupported_numeric_bounds() -> None:
+    def walk(value):
+        if isinstance(value, dict):
+            assert "minimum" not in value
+            assert "maximum" not in value
+            for child in value.values():
+                walk(child)
+        elif isinstance(value, list):
+            for child in value:
+                walk(child)
+
+    walk(TOOL_SCHEMAS)

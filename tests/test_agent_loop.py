@@ -35,8 +35,10 @@ class ScriptedMessages:
     def __init__(self, responses: list[Response]):
         self.responses = responses
         self.calls = 0
+        self.requests: list[dict[str, Any]] = []
 
     def create(self, **kwargs: Any) -> Response:
+        self.requests.append(kwargs)
         response = self.responses[min(self.calls, len(self.responses) - 1)]
         self.calls += 1
         return response
@@ -172,3 +174,33 @@ def test_partial_plan_constructed_from_last_checked_candidate_set() -> None:
     items = [{"item_id": "SOF-001", "quantity": 1}, {"item_id": "CFT-001", "quantity": 1}]
     result = make_agent([Response([ToolBlock("1", "check_fit", {"items": items, "room_length_cm": 480, "room_width_cm": 360, "room_type": "Living Room"})])], max_iterations=1).run(brief())
     assert [item.item_id for item in result.raw_plan.items] == ["SOF-001", "CFT-001"]
+
+
+def test_live_requests_keep_cache_control_under_anthropic_limit() -> None:
+    items = [{"item_id": "SOF-001", "quantity": 1}]
+    client = ScriptedClient([
+        Response([ToolBlock("1", "search_catalog", {"category": "Sofa"})]),
+        Response([ToolBlock("2", "check_budget", {"items": items, "budget_inr": 250000})]),
+        Response([ToolBlock("3", "check_fit", {"items": items, "room_length_cm": 480, "room_width_cm": 360, "room_type": "Living Room"})]),
+        Response([TextBlock(plan(items))]),
+    ])
+    r = repo()
+    agent = InteriorDesignAgent(
+        tools=AgentTools(r),
+        validator=PlanValidator(r),
+        api_key="",
+        model="fake-model",
+        max_iterations=10,
+        client=client,
+    )
+    agent.run(brief())
+
+    def count_cache_controls(value: Any) -> int:
+        if isinstance(value, dict):
+            return int("cache_control" in value) + sum(count_cache_controls(child) for child in value.values())
+        if isinstance(value, list):
+            return sum(count_cache_controls(child) for child in value)
+        return 0
+
+    assert client.messages.requests
+    assert max(count_cache_controls(request) for request in client.messages.requests) <= 4

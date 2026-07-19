@@ -106,7 +106,6 @@ class InteriorDesignAgent:
             "content": [{
                 "type": "text",
                 "text": brief_to_text(brief),
-                "cache_control": {"type": "ephemeral"},
             }],
         }]
         trace: list[TraceEntry] = []
@@ -144,8 +143,6 @@ class InteriorDesignAgent:
                         "tool_use_id": block.id,
                         "content": json.dumps(result, ensure_ascii=False),
                     })
-                if tool_results:
-                    tool_results[-1]["cache_control"] = {"type": "ephemeral"}
                 messages.append({"role": "user", "content": tool_results})
                 continue
 

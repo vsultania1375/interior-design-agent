@@ -2,6 +2,7 @@
 .env.*
 !.env.example
 .streamlit/secrets.toml
+.streamlit.pid
 .venv/
 venv/
 env/
