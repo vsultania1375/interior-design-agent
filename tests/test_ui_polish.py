@@ -101,7 +101,7 @@ def test_live_generation_trigger_is_explicit_create_button() -> None:
 
 def test_generated_result_prevents_duplicate_generation() -> None:
     source = (ROOT / "app.py").read_text(encoding="utf-8")
-    assert "if state.generated_result is not None:" in source
+    assert "had_prior_result = state.generated_result is not None" in source
     assert "if not state.generation_requested:" in source
 
 

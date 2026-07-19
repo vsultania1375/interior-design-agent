@@ -68,9 +68,12 @@ def test_customer_free_text_fields_capped_at_300_chars_in_ui_and_defensively() -
     assert "NOTE_MAX_CHARS = 300" in APP_SOURCE
     assert 'st.text_area("Optional note", value=state.brief.customer_note, height=70, max_chars=NOTE_MAX_CHARS)' in APP_SOURCE
     assert 'st.text_input("What else should be included?", key="req_other", max_chars=NOTE_MAX_CHARS)' in APP_SOURCE
-    # Defensive truncation must not rely solely on the widget parameter.
-    assert "note.strip()[:NOTE_MAX_CHARS]" in APP_SOURCE
-    assert "other.strip()[:NOTE_MAX_CHARS]" in APP_SOURCE
+    # Defensive truncation must not rely solely on the widget parameter — both fields
+    # route through the shared _apply_free_text_guardrails helper, which truncates itself.
+    assert "def _apply_free_text_guardrails(raw_text: str) -> tuple[str, bool]:" in APP_SOURCE
+    assert "raw_text.strip()[:NOTE_MAX_CHARS]" in APP_SOURCE
+    assert "_apply_free_text_guardrails(other)" in APP_SOURCE
+    assert "_apply_free_text_guardrails(note)" in APP_SOURCE
 
 
 def test_free_text_char_counter_shown_near_fields() -> None:
@@ -115,5 +118,6 @@ def test_flagged_customer_note_never_reaches_to_agent_brief() -> None:
     assert payload["customer_note"] == ""
 
 
-def test_composer_excluded_on_generating_and_result_steps() -> None:
-    assert "{ConsultationStep.sample_or_custom, ConsultationStep.generating, ConsultationStep.result}" in APP_SOURCE
+def test_composer_excluded_on_generating_step_but_shown_on_result() -> None:
+    assert "{ConsultationStep.sample_or_custom, ConsultationStep.generating}" in APP_SOURCE
+    assert "Want changes? Describe them here" in APP_SOURCE
