@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from interior_agent.ui.presenter import format_inr, price_copy, sample_display_name
-from interior_agent.ui.state import ConsultationStep, answer, back, brief_ready, feet_to_cm, initial_state, populate_from_sample, reset, to_agent_brief
+from interior_agent.ui.state import ConsultationStep, back, brief_ready, feet_to_cm, initial_state, populate_from_sample, record_step_answer, reset, to_agent_brief
 
 
 def test_initial_brief_state() -> None:
@@ -28,10 +28,11 @@ def test_required_field_readiness() -> None:
 def test_back_transition_and_reset() -> None:
     state = initial_state()
     state.step = ConsultationStep.room_size
-    answer(state, "Medium", next_to=ConsultationStep.budget)
+    record_step_answer(state, "How large is your living room?", "Medium", next_to=ConsultationStep.budget)
+    assert state.step_answers["room_size"]["answer"] == "Medium"
     back(state)
     assert state.step == ConsultationStep.room_size
-    assert state.history[-1]["role"] == "assistant"
+    assert "room_size" not in state.step_answers
     assert reset().step == ConsultationStep.welcome
 
 
