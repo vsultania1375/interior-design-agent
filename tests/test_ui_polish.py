@@ -60,6 +60,7 @@ def test_customer_app_source_hides_technical_default_controls() -> None:
     source = (ROOT / "app.py").read_text(encoding="utf-8")
     assert "Live after review" not in source
     assert "Configured model" not in source
+    assert "model ID" not in source
     assert "st.sidebar" not in source
     assert "Developer Mode" in source
     assert "developer_mode_allowed" in source
@@ -69,3 +70,23 @@ def test_first_step_has_no_bottom_back_control() -> None:
     assert ConsultationStep.welcome.value == "welcome"
     source = (ROOT / "app.py").read_text(encoding="utf-8")
     assert "state.step not in {ConsultationStep.welcome, ConsultationStep.result}" in source
+
+
+def test_compact_start_over_exists_in_topbar_only() -> None:
+    source = (ROOT / "app.py").read_text(encoding="utf-8")
+    assert source.count("Start over") == 1
+    assert "top_start_over" in source
+    assert "top-action" in source
+
+
+def test_review_helper_note_is_compact_not_info_alert() -> None:
+    source = (ROOT / "app.py").read_text(encoding="utf-8")
+    assert "Custom plan generation is available in live mode" in source
+    assert "compact-note" in source
+    assert 'st.info("Custom plan generation is available in live mode' not in source
+
+
+def test_compact_preview_map_is_used_outside_result() -> None:
+    source = (ROOT / "app.py").read_text(encoding="utf-8")
+    assert "max_px=330" in source
+    assert "placeholder-room" in source

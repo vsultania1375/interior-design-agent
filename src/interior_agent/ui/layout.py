@@ -129,11 +129,10 @@ def generate_living_room_layout(room_length_cm: int, room_width_cm: int, catalog
     return result
 
 
-def render_layout_svg(layout: LayoutResult) -> str:
-    max_px = 520
+def render_layout_svg(layout: LayoutResult, *, max_px: int = 520, min_width: int = 260, min_height: int = 220) -> str:
     scale = max_px / max(layout.room_length_cm, layout.room_width_cm, 1)
-    width_px = max(260, layout.room_length_cm * scale)
-    height_px = max(220, layout.room_width_cm * scale)
+    width_px = max(min_width, layout.room_length_cm * scale)
+    height_px = max(min_height, layout.room_width_cm * scale)
 
     palette = {
         "Rug": ("#d8b980", "#7a5a24"),
