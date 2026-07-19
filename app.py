@@ -7,11 +7,13 @@ from pathlib import Path
 from typing import Any
 
 import streamlit as st
+import streamlit.components.v1 as components
 from dotenv import load_dotenv
 
 PROJECT_ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 DEMO_MODE = os.getenv("INTERIOR_UI_DEMO_MODE") == "1"
+NOTE_MAX_CHARS = 300
 if not DEMO_MODE and os.getenv("INTERIOR_SKIP_DOTENV") != "1":
     load_dotenv(PROJECT_ROOT / ".env")
 
@@ -22,10 +24,10 @@ from interior_agent.schemas import BOQLine, TraceEntry  # noqa: E402
 from interior_agent.tools import AgentTools  # noqa: E402
 from interior_agent.ui.chat import START_CHOICES, close_question_shell, render_messages, render_question_shell  # noqa: E402
 from interior_agent.ui.demo import make_demo_result  # noqa: E402
-from interior_agent.ui.input_parser import parse_budget, parse_dimensions, parse_multi_value_text, parse_style  # noqa: E402
+from interior_agent.ui.input_parser import parse_budget, parse_dimensions, parse_multi_value_text, parse_style, screen_free_text  # noqa: E402
 from interior_agent.ui.layout import generate_living_room_layout, render_layout_svg  # noqa: E402
 from interior_agent.ui.presenter import availability_copy, brief_summary, format_inr, line_total_copy, normal_result_text, price_copy, sample_display_name  # noqa: E402
-from interior_agent.ui.state import ConsultationStep, add_result_message, add_review_message, answer, back, brief_ready, demo_preview_allowed, developer_mode_allowed, initial_state, populate_from_sample, reset, to_agent_brief  # noqa: E402
+from interior_agent.ui.state import ConsultationStep, add_result_message, add_review_message, answer, back, brief_ready, demo_preview_allowed, developer_mode_allowed, ensure_question_message, initial_state, populate_from_sample, reset, to_agent_brief  # noqa: E402
 from interior_agent.validator import PlanValidator  # noqa: E402
 
 
@@ -37,18 +39,42 @@ def _css() -> None:
         """
         <style>
         #MainMenu, footer, header, [data-testid="stToolbar"], [data-testid="stDecoration"], [data-testid="stStatusWidget"] { display:none !important; }
-        html, body { height:100%; }
-        .stApp { background:#f6f1e9; color:#26221e; }
-        .block-container { padding:.4rem 1.1rem .6rem; max-width:1180px; }
+        html, body, .stApp, [data-testid="stAppViewContainer"], [data-testid="stMain"] { height:100vh; overflow:hidden !important; }
+        .stApp { background:#f5f3ee; color:#24211d; }
+        .block-container { padding:.55rem 1.1rem; max-width:min(1600px, 96vw); height:100%; box-sizing:border-box; display:flex; flex-direction:column; }
         [data-testid="stSidebar"] { display:none; }
-        .topbar { display:flex; justify-content:space-between; align-items:center; min-height:34px; margin-bottom:.3rem; }
-        .brand { display:flex; align-items:center; gap:.55rem; font-weight:760; font-size:1rem; }
+        .topbar { display:flex; justify-content:space-between; align-items:center; min-height:34px; margin-bottom:.5rem; flex:0 0 auto; }
+        .brand { display:flex; align-items:center; gap:.55rem; font-weight:700; font-size:1rem; }
         .mark { width:28px; height:28px; border-radius:9px; background:#2f6b4f; color:white; display:inline-flex; align-items:center; justify-content:center; font-size:14px; }
-        .preview-mode { color:#736a60; font-size:.82rem; margin-right:.6rem; }
-        .app-grid { align-items:start; }
-        .st-key-chat_panel, .st-key-side_panel, .st-key-result_card, [class*="st-key-product_card_"] { background:#fffdf9; border:1px solid #e4dbcf; border-radius:16px; box-shadow:0 14px 34px rgba(71,55,38,.07); }
-        .st-key-chat_panel { padding:.65rem .85rem; display:flex; flex-direction:column; gap:.4rem !important; }
-        .st-key-side_panel { padding:.85rem; }
+        .preview-mode { color:#7a7166; font-size:.82rem; margin-right:.6rem; }
+        .block-container > div { min-height:0; }
+        .block-container > div > div { flex:0 0 auto; }
+        .block-container > div > div:has([class*="st-key-page_body"]) { flex:1 1 auto; min-height:0; }
+        .st-key-page_body { display:flex; flex-direction:column; flex:1 1 auto; min-height:0; height:100%; }
+        .st-key-page_body > div { flex:0 0 auto; }
+        .st-key-page_body > div:has([class*="st-key-main_split"]) { flex:1 1 auto; min-height:0; }
+        .st-key-main_split { display:flex; flex-direction:row; flex:1 1 auto; min-height:0; align-items:stretch; height:100%; }
+        .st-key-chat_panel, .st-key-side_panel, .st-key-result_card, [class*="st-key-product_card_"] { background:#fffefc; border:1px solid #e7e0d5; border-radius:14px; }
+        .st-key-main_split > div:has([class*="st-key-chat_panel"]) { flex:0 1 58%; min-width:340px; max-width:76%; min-height:0; }
+        .st-key-main_split > div:has(#panel-divider) { flex:0 0 14px; width:14px; min-width:14px; padding:0 !important; min-height:0; position:relative; }
+        .st-key-main_split > div:has([class*="st-key-side_panel_wrap"]) { flex:1 1 0%; min-width:260px; min-height:0; }
+        .panel-divider { position:absolute; top:0; bottom:0; left:0; right:0; width:14px; cursor:col-resize; display:flex; align-items:center; justify-content:center; background:transparent; }
+        .panel-divider::before { content:""; width:2px; height:100%; border-radius:0; background:#ddd4c6; transition:background .12s ease; }
+        .panel-divider:hover::before, .panel-divider.dragging::before { background:#2f6b4f; }
+        .st-key-chat_panel { padding:0; display:flex; flex-direction:column; height:100%; min-height:0; overflow:hidden; }
+        .st-key-chat_panel > div { flex:0 0 auto; }
+        .st-key-chat_panel > div:has([class*="st-key-chat_scroll"]) { flex:1 1 auto; min-height:0; }
+        .st-key-chat_scroll { flex:1 1 auto; min-height:0; overflow-y:auto; padding:.85rem .95rem 0; display:flex; flex-direction:column; gap:.5rem; height:100%; }
+        .st-key-side_panel_wrap { height:100%; min-height:0; overflow-y:auto; display:flex; flex-direction:column; gap:.6rem !important; }
+        .st-key-side_panel_wrap > div { flex:0 0 auto; }
+        .st-key-side_panel_wrap > div:has(.placeholder-room) { flex:1 1 auto; min-height:0; display:flex; }
+        .st-key-side_panel_wrap > div:has(.placeholder-room) .stMarkdown,
+        .st-key-side_panel_wrap > div:has(.placeholder-room) [data-testid="stMarkdownContainer"],
+        .st-key-side_panel_wrap > div:has(.placeholder-room) > .stMarkdown > div {
+            flex:1 1 auto !important; min-height:0 !important; width:100% !important; height:100% !important; display:flex !important;
+            margin:0 !important; padding:0 !important; box-sizing:border-box !important;
+        }
+        .st-key-side_panel { padding:.95rem; }
         .intro { padding:.15rem .2rem .35rem; }
         .intro h1 { font-size:1.3rem; margin:.05rem 0 .2rem; line-height:1.08; }
         .intro p { color:#695f55; margin:0; font-size:.86rem; }
@@ -63,17 +89,18 @@ def _css() -> None:
         .chat-bubble { max-width:82%; border-radius:15px; padding:.48rem .68rem; font-size:.92rem; line-height:1.34; }
         .chat-bubble.assistant { background:#f7f0e7; color:#2b2621; border:1px solid #eadfd2; border-bottom-left-radius:6px; }
         .chat-bubble.user { background:#2f6b4f; color:white; border-bottom-right-radius:6px; }
+        .st-key-chat_scroll > div:has([class*="st-key-active_card_"]) { margin-top:auto !important; }
         [class*="st-key-active_card_"] { border:1px solid #ded5c9 !important; background:#fffaf4 !important; border-radius:16px !important; padding:.6rem .7rem !important; margin:.2rem 0 .3rem !important; }
         .active-head { display:flex; justify-content:space-between; gap:1rem; color:#28231f; font-weight:780; font-size:1.02rem; }
         .active-head span:last-child { color:#2f6b4f; font-size:.82rem; white-space:nowrap; }
         .active-helper { color:#746b60; font-size:.86rem; margin:.16rem 0 .4rem; }
-        div.stButton > button { border-radius:12px; border:1px solid #ded5c9; background:#fffefb; color:#28231f; min-height:2.3rem; box-shadow:0 5px 13px rgba(71,55,38,.04); font-size:.88rem; line-height:1.15; white-space:pre-wrap; text-align:left; padding:.32rem .58rem; }
-        div.stButton > button:hover, div.stButton > button:focus { border-color:#2f6b4f; box-shadow:0 0 0 3px rgba(47,107,79,.13); color:#20392d; }
+        div.stButton > button { border-radius:12px; border:1px solid #e7e0d5; background:#fffefc; color:#28231f; min-height:2.3rem; font-size:.88rem; line-height:1.15; white-space:pre-wrap; text-align:left; padding:.32rem .58rem; transition:border-color .12s ease, box-shadow .12s ease; }
+        div.stButton > button:hover, div.stButton > button:focus { border-color:#2f6b4f; box-shadow:0 0 0 3px rgba(47,107,79,.1); color:#20392d; }
         div.stButton > button[kind="primary"] { background:#2f6b4f; border-color:#2f6b4f; color:white; text-align:center; min-height:2.3rem; }
-        .st-key-top_action div.stButton > button { min-height:2.05rem; box-shadow:none; background:#fffaf3; font-size:.82rem; text-align:center; padding:.3rem .6rem; }
+        .st-key-top_action div.stButton > button { min-height:2.05rem; background:transparent; border-color:#e7e0d5; font-size:.82rem; text-align:center; padding:.3rem .6rem; }
         .row-button div.stButton > button { width:100%; min-height:2.4rem; }
-        .st-key-composer { margin-top:auto; border-top:1px solid #efe5d9; padding-top:.4rem; }
-        .st-key-composer div.stTextInput input { border-radius:999px !important; border-color:#ded5c9 !important; background:#fffefb !important; min-height:2.3rem; }
+        .st-key-composer { flex:0 0 auto; border-top:1px solid #efe9dd; padding:.6rem .95rem .85rem; }
+        .st-key-composer div.stTextInput input { border-radius:999px !important; border-color:#e7e0d5 !important; background:#fffefc !important; min-height:2.3rem; }
         .compact-note { color:#746b60; font-size:.8rem; margin:.3rem 0 0; }
         .side-title { color:#2f6b4f; font-weight:780; font-size:.95rem; margin-bottom:.15rem; }
         .side-copy { color:#736a60; font-size:.86rem; margin-bottom:.55rem; }
@@ -81,7 +108,7 @@ def _css() -> None:
         .kv:last-child { border-bottom:0; }
         .kv span:first-child { color:#736a5f; }
         .kv span:last-child { text-align:right; font-weight:690; color:#2f2923; }
-        .placeholder-room { height:145px; border:1px dashed #d8cfc3; border-radius:14px; background:linear-gradient(135deg,#fffdf9,#f7f0e6); display:flex; align-items:center; justify-content:center; color:#6d6358; text-align:center; padding:.8rem; font-size:.88rem; margin-top:.55rem; }
+        .placeholder-room { height:100%; width:100%; min-height:220px; border:1px dashed #d8cfc3; border-radius:14px; background:linear-gradient(135deg,#fffdf9,#f7f0e6); display:flex; align-items:center; justify-content:center; color:#6d6358; text-align:center; padding:.8rem; font-size:.88rem; margin:0; box-sizing:border-box; }
         .compact-preview-svg { max-width:260px; margin:.4rem auto 0; }
         .compact-preview-svg svg { width:100%; height:auto; display:block; }
         .room-sketch { width:96px; height:66px; border:2px solid #d6c7b4; border-radius:10px; margin:0 auto .45rem; position:relative; }
@@ -109,19 +136,67 @@ def _css() -> None:
     )
 
 
-def _lock_viewport(locked: bool) -> None:
-    if not locked:
-        return
-    st.markdown(
+def _panel_resizer_script() -> None:
+    components.html(
         """
-        <style>
-        html, body, .stApp, [data-testid="stAppViewContainer"], [data-testid="stMain"] {
-            height:100vh !important;
-            overflow:hidden !important;
-        }
-        </style>
+        <script>
+        (function () {
+            function init() {
+                var doc = window.parent.document;
+                var divider = doc.getElementById('panel-divider');
+                if (!divider) return;
+                var state = window.parent.__panelResizerState || (window.parent.__panelResizerState = {});
+                if (state.divider === divider) return;
+                if (state.cleanup) state.cleanup();
+
+                var row = divider.closest('[class*="st-key-main_split"]');
+                var chatWrapper = row && row.querySelector(':scope > div:has([class*="st-key-chat_panel"])');
+                if (!row || !chatWrapper) return;
+
+                try {
+                    var stored = window.parent.sessionStorage.getItem('panelSplitPct');
+                    if (stored) chatWrapper.style.flexBasis = stored + '%';
+                } catch (e) {}
+
+                var dragging = false;
+                function onDown(e) {
+                    dragging = true;
+                    divider.classList.add('dragging');
+                    doc.body.style.userSelect = 'none';
+                    e.preventDefault();
+                }
+                function onMove(e) {
+                    if (!dragging) return;
+                    var rect = row.getBoundingClientRect();
+                    var pct = ((e.clientX - rect.left) / rect.width) * 100;
+                    pct = Math.max(28, Math.min(75, pct));
+                    chatWrapper.style.flexBasis = pct + '%';
+                    try { window.parent.sessionStorage.setItem('panelSplitPct', String(pct)); } catch (e) {}
+                }
+                function onUp() {
+                    if (!dragging) return;
+                    dragging = false;
+                    divider.classList.remove('dragging');
+                    doc.body.style.userSelect = '';
+                }
+
+                divider.addEventListener('mousedown', onDown);
+                doc.addEventListener('mousemove', onMove);
+                doc.addEventListener('mouseup', onUp);
+
+                state.divider = divider;
+                state.cleanup = function () {
+                    divider.removeEventListener('mousedown', onDown);
+                    doc.removeEventListener('mousemove', onMove);
+                    doc.removeEventListener('mouseup', onUp);
+                };
+            }
+            init();
+            setInterval(init, 400);
+        })();
+        </script>
         """,
-        unsafe_allow_html=True,
+        height=0,
     )
 
 
@@ -214,6 +289,7 @@ def _sample_question(state, repo: CatalogRepository) -> None:
 
 
 def _room_question(state) -> None:
+    ensure_question_message(state, ConsultationStep.room_size, "How large is your living room?")
     render_question_shell(ConsultationStep.room_size, "How large is your living room?", "Select a size or type exact measurements below.")
     sizes = [
         ("Small", "Around 10 × 10 ft", 10, 10),
@@ -245,6 +321,7 @@ def _room_question(state) -> None:
 
 
 def _budget_question(state) -> None:
+    ensure_question_message(state, ConsultationStep.budget, "What total budget should I work within?")
     render_question_shell(ConsultationStep.budget, "What total budget should I work within?", "I’ll avoid silently exceeding this budget.")
     options = [
         ("Under ₹50,000", "Starter essentials", 50000),
@@ -274,6 +351,7 @@ def _budget_question(state) -> None:
 
 
 def _style_question(state) -> None:
+    ensure_question_message(state, ConsultationStep.style, "What kind of look do you prefer?")
     render_question_shell(ConsultationStep.style, "What kind of look do you prefer?", "Choose the closest style direction.")
     styles = [
         ("Scandinavian", "Light woods, soft neutrals, and uncluttered forms."),
@@ -296,6 +374,7 @@ def _style_question(state) -> None:
 
 
 def _requirements_question(state) -> None:
+    ensure_question_message(state, ConsultationStep.must_haves, "What must the room include?")
     render_question_shell(ConsultationStep.must_haves, "What must the room include?", "Choose all that matter, then continue.")
     options = ["Sofa", "Coffee table", "TV unit", "Rug", "Lighting", "Storage", "Reading chair", "Side table", "Plants", "Something else"]
     current = set(state.brief.must_haves)
@@ -312,11 +391,15 @@ def _requirements_question(state) -> None:
                 _set_state(state)
     other = ""
     if "Something else" in current:
-        other = st.text_input("What else should be included?", key="req_other")
+        other = st.text_input("What else should be included?", key="req_other", max_chars=NOTE_MAX_CHARS)
+        st.caption(f"{len(other)}/{NOTE_MAX_CHARS} characters")
     if st.button("Continue", key="req_continue", type="primary"):
         values = [item for item in state.brief.must_haves if item != "Something else"]
-        if other.strip():
-            values.append(other.strip())
+        cleaned_other, flagged = screen_free_text(other.strip()[:NOTE_MAX_CHARS])
+        if flagged:
+            st.toast("That note couldn't be included, but the rest of your plan will proceed as entered.")
+        elif cleaned_other:
+            values.append(cleaned_other)
         if not values:
             st.error("Choose at least one requirement to continue.")
         else:
@@ -327,6 +410,7 @@ def _requirements_question(state) -> None:
 
 
 def _context_question(state) -> None:
+    ensure_question_message(state, ConsultationStep.constraints, "Anything important about how you use the room?")
     render_question_shell(ConsultationStep.constraints, "Anything important about how you use the room?", "Select any that apply or add a short note.")
     options = ["We have young children", "We have pets", "It is a rented home", "We need more storage", "We entertain guests", "Fast delivery matters", "No special constraint"]
     current = set(state.brief.constraints)
@@ -344,10 +428,14 @@ def _context_question(state) -> None:
                     current.add(option)
                 state.brief.constraints = list(current)
                 _set_state(state)
-    note = st.text_area("Optional note", value=state.brief.customer_note, height=70)
+    note = st.text_area("Optional note", value=state.brief.customer_note, height=70, max_chars=NOTE_MAX_CHARS)
+    st.caption(f"{len(note)}/{NOTE_MAX_CHARS} characters")
     if st.button("Review my answers", key="ctx_continue", type="primary"):
         state.brief.constraints = [] if "No special constraint" in current else list(current)
-        state.brief.customer_note = note.strip()
+        cleaned_note, flagged = screen_free_text(note.strip()[:NOTE_MAX_CHARS])
+        if flagged:
+            st.toast("That note couldn't be included, but the rest of your plan will proceed as entered.")
+        state.brief.customer_note = cleaned_note
         text = "There is no special context." if not state.brief.constraints and not state.brief.customer_note else "Important context: " + _join_list(state.brief.constraints + ([state.brief.customer_note] if state.brief.customer_note else [])) + "."
         answer(state, text, next_to=ConsultationStep.review)
         add_review_message(state)
@@ -679,25 +767,26 @@ def main() -> None:
     model = secret_model or settings.anthropic_model
     state = _state()
     developer_available = developer_mode_allowed(os.environ, dict(st.query_params))
-    _lock_viewport(state.step != ConsultationStep.result)
-    _topbar(state, DEMO_MODE, developer_available)
-    left, right = st.columns([0.58, 0.42], gap="large")
-    with left:
-        with st.container(key="chat_panel"):
-            if state.step == ConsultationStep.welcome:
-                _intro()
-            with st.container(key="message_log", height=90, border=False):
-                _messages(state)
-            if state.step != ConsultationStep.result:
-                _active_question(state, repo, settings, api_key, model, bool(api_key))
-                if state.step not in {ConsultationStep.welcome, ConsultationStep.sample_or_custom, ConsultationStep.generating}:
-                    if st.button("Back", key="chat_back"):
-                        _set_state(back(state))
-            else:
-                _result_sections(state, repo)
-            _composer(state)
-    with right:
-        _side_panel(state, repo)
+    with st.container(key="page_body"):
+        _topbar(state, DEMO_MODE, developer_available)
+        with st.container(key="main_split"):
+            with st.container(key="chat_panel"):
+                with st.container(key="chat_scroll"):
+                    if state.step == ConsultationStep.welcome:
+                        _intro()
+                    _messages(state)
+                    if state.step != ConsultationStep.result:
+                        _active_question(state, repo, settings, api_key, model, bool(api_key))
+                        if state.step not in {ConsultationStep.welcome, ConsultationStep.sample_or_custom, ConsultationStep.generating}:
+                            if st.button("Back", key="chat_back"):
+                                _set_state(back(state))
+                    else:
+                        _result_sections(state, repo)
+                _composer(state)
+            st.markdown('<div id="panel-divider" class="panel-divider"></div>', unsafe_allow_html=True)
+            with st.container(key="side_panel_wrap"):
+                _side_panel(state, repo)
+    _panel_resizer_script()
 
 
 main()

@@ -130,6 +130,10 @@ def append_message(
     return message
 
 
+def ensure_question_message(state: ConsultationState, step: ConsultationStep, text: str) -> None:
+    append_message(state, "assistant", text, step, message_type="text", stable_key=f"question_{step.value}")
+
+
 def remove_answer_for_step(state: ConsultationState, step: ConsultationStep) -> None:
     stable_key = step.value
     message_id = state.answer_message_ids.pop(stable_key, None)

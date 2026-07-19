@@ -55,3 +55,25 @@ def parse_style(text: str) -> str | None:
 def parse_multi_value_text(text: str) -> list[str]:
     values = [part.strip().capitalize() for part in re.split(r",| and |\n", text) if part.strip()]
     return list(dict.fromkeys(values))
+
+
+INJECTION_PATTERNS = [
+    r"ignore (all |previous |your )?instructions",
+    r"system prompt",
+    r"you are now",
+    r"act as (a|an)",
+    r"pretend (to be|you are)",
+    r"disregard (all |previous )?",
+    r"new instructions",
+    r"reveal your (prompt|instructions|rules)",
+]
+
+_INJECTION_RE = re.compile("|".join(INJECTION_PATTERNS), re.IGNORECASE)
+
+
+def screen_free_text(text: str) -> tuple[str, bool]:
+    """Returns (cleaned_text, was_flagged). If flagged, cleaned_text is empty —
+    the rest of the brief still proceeds without this note."""
+    if _INJECTION_RE.search(text):
+        return "", True
+    return text, False

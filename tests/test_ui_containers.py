@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -15,9 +14,11 @@ FIXED_CONTAINER_KEYS = [
     "top_action",
     "composer",
     "result_card",
-    "side_panel",
+    "side_panel_wrap",
     "chat_panel",
-    "message_log",
+    "chat_scroll",
+    "main_split",
+    "page_body",
 ]
 
 RETIRED_DIV_OPEN_TAGS = [
@@ -56,16 +57,19 @@ def test_retired_div_open_close_pairs_are_gone() -> None:
         assert tag not in APP_SOURCE, f"stale orphan div-open markup still present: {tag!r}"
 
 
-def test_message_log_container_has_fixed_numeric_height() -> None:
-    match = re.search(r'st\.container\(key="message_log",\s*height=(\d+),\s*border=False\)', APP_SOURCE)
-    assert match is not None, "message_log container must set a fixed numeric height="
-    assert int(match.group(1)) > 0
+def test_chat_scroll_fills_remaining_height_with_internal_scroll() -> None:
+    assert '.st-key-chat_scroll { flex:1 1 auto; min-height:0; overflow-y:auto' in APP_SOURCE
 
 
-def test_viewport_lock_is_conditional_on_non_result_steps() -> None:
-    assert "def _lock_viewport(" in APP_SOURCE
+def test_viewport_lock_is_unconditional_full_height_layout() -> None:
     assert "overflow:hidden !important" in APP_SOURCE
-    assert "_lock_viewport(state.step != ConsultationStep.result)" in APP_SOURCE
+    assert '[data-testid="stMain"]' in APP_SOURCE
+
+
+def test_panel_divider_and_resizer_script_present() -> None:
+    assert 'id="panel-divider"' in APP_SOURCE
+    assert "def _panel_resizer_script(" in APP_SOURCE
+    assert "components.html(" in APP_SOURCE
 
 
 def test_compact_preview_svg_is_width_capped_to_avoid_page_overflow() -> None:
