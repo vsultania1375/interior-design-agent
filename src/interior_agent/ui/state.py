@@ -76,6 +76,7 @@ class ConsultationState:
     developer_mode: bool = False
     active_tab: str = "Room Layout"
     answer_message_ids: dict[str, str] = field(default_factory=dict)
+    step_answers: dict[str, dict[str, str]] = field(default_factory=dict)
     generation_requested: bool = False
     agent_running: bool = False
 
@@ -134,11 +135,14 @@ def ensure_question_message(state: ConsultationState, step: ConsultationStep, te
     append_message(state, "assistant", text, step, message_type="text", stable_key=f"question_{step.value}")
 
 
+def record_step_answer(state: ConsultationState, question: str, answer_text: str, *, next_to: ConsultationStep | None = None) -> ConsultationState:
+    state.step_answers[state.step.value] = {"question": question, "answer": answer_text}
+    state.step = next_to or next_step(state.step)
+    return state
+
+
 def remove_answer_for_step(state: ConsultationState, step: ConsultationStep) -> None:
-    stable_key = step.value
-    message_id = state.answer_message_ids.pop(stable_key, None)
-    if message_id:
-        state.messages = [message for message in state.messages if message.id != message_id]
+    state.step_answers.pop(step.value, None)
 
 
 def next_step(step: ConsultationStep) -> ConsultationStep:
@@ -220,14 +224,24 @@ def demo_preview_allowed(brief: BriefState) -> bool:
 
 
 def review_qa_pairs(state: ConsultationState) -> list[tuple[str, str]]:
-    by_id = {message.id: message for message in state.messages}
     pairs: list[tuple[str, str]] = []
     for step in CUSTOMER_STEPS:
-        question = by_id.get(state.answer_message_ids.get(f"question_{step.value}", ""))
-        answer_message = by_id.get(state.answer_message_ids.get(step.value, ""))
-        if question and answer_message:
-            pairs.append((question.content, answer_message.content))
+        entry = state.step_answers.get(step.value)
+        if entry:
+            pairs.append((entry["question"], entry["answer"]))
     return pairs
+
+
+def add_submitted_answers_message(state: ConsultationState, qa_pairs: list[tuple[str, str]]) -> None:
+    lines = [f"Q: {question}\nA: {answer_text}" for question, answer_text in qa_pairs]
+    append_message(
+        state,
+        "user",
+        "\n\n".join(lines),
+        state.step,
+        message_type="answer_summary",
+        stable_key="submitted_answers",
+    )
 
 
 def add_review_message(state: ConsultationState, qa_pairs: list[tuple[str, str]] | None = None) -> None:
@@ -244,11 +258,11 @@ def add_review_message(state: ConsultationState, qa_pairs: list[tuple[str, str]]
     )
 
 
-def add_result_message(state: ConsultationState) -> None:
+def add_result_message(state: ConsultationState, summary_text: str | None = None) -> None:
     append_message(
         state,
         "assistant",
-        "Your room plan is ready.",
+        summary_text or "Your room plan is ready.",
         ConsultationStep.result,
         message_type="result",
         stable_key="result",

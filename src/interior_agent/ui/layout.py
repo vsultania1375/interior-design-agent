@@ -66,6 +66,52 @@ def _fits(x: float, y: float, width: float, depth: float, room_l: int, room_w: i
     return x >= 0 and y >= 0 and x + width <= room_l and y + depth <= room_w
 
 
+SECONDARY_ROLES = {"Chair", "Side Table", "Floor Lamp", "Storage"}
+
+
+def _overlaps(a: PlacedItem, b: PlacedItem) -> bool:
+    return (
+        a.x_cm < b.x_cm + b.width_cm and a.x_cm + a.width_cm > b.x_cm
+        and a.y_cm < b.y_cm + b.depth_cm and a.y_cm + a.depth_cm > b.y_cm
+    )
+
+
+def _find_clear_position(item: PlacedItem, others: list[PlacedItem], room_l: float, room_w: float, step: float = 10.0) -> tuple[float, float] | None:
+    max_x = room_l - item.width_cm
+    max_y = room_w - item.depth_cm
+    if max_x < 0 or max_y < 0:
+        return None
+    candidates: list[tuple[float, float]] = []
+    x = 0.0
+    while x <= max_x + 1e-6:
+        y = 0.0
+        while y <= max_y + 1e-6:
+            candidates.append((x, y))
+            y += step
+        x += step
+    candidates.sort(key=lambda pos: (pos[0] - item.x_cm) ** 2 + (pos[1] - item.y_cm) ** 2)
+    for cx, cy in candidates:
+        probe = PlacedItem(item_id=item.item_id, name=item.name, category=item.category, role=item.role, x_cm=cx, y_cm=cy, width_cm=item.width_cm, depth_cm=item.depth_cm)
+        if not any(_overlaps(probe, other) for other in others):
+            return cx, cy
+    return None
+
+
+def _resolve_collisions(result: LayoutResult) -> None:
+    secondary_items = [item for item in result.placed_items if item.role in SECONDARY_ROLES]
+    for item in secondary_items:
+        others = [other for other in result.placed_items if other.role != "Rug" and other is not item]
+        if not any(_overlaps(item, other) for other in others):
+            continue
+        new_position = _find_clear_position(item, others, result.room_length_cm, result.room_width_cm)
+        if new_position is None:
+            result.placed_items.remove(item)
+            result.unplaced_item_ids.append(item.item_id)
+            result.warnings.append(f"{item.item_id} could not be placed without overlapping other furniture and was omitted from the layout.")
+            continue
+        item.x_cm, item.y_cm = round(new_position[0], 1), round(new_position[1], 1)
+
+
 def _add(result: LayoutResult, item: dict[str, Any], role: str, x: float, y: float, width: float, depth: float, *, z: int = 10) -> bool:
     if not _fits(x, y, width, depth, result.room_length_cm, result.room_width_cm):
         result.warnings.append(f"{item['item_id']} could not be drawn within the room bounds.")
@@ -126,6 +172,7 @@ def generate_living_room_layout(room_length_cm: int, room_width_cm: int, catalog
         elif role == "Storage":
             _add(result, item, role, room_length_cm - width - 24, 24 + (n - 1) * (depth + 16), width, depth, z=18)
 
+    _resolve_collisions(result)
     return result
 
 

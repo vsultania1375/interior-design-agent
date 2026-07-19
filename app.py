@@ -26,8 +26,8 @@ from interior_agent.ui.chat import START_CHOICES, close_question_shell, render_m
 from interior_agent.ui.demo import make_demo_result  # noqa: E402
 from interior_agent.ui.input_parser import parse_budget, parse_dimensions, parse_multi_value_text, parse_style, screen_free_text  # noqa: E402
 from interior_agent.ui.layout import generate_living_room_layout, render_layout_svg  # noqa: E402
-from interior_agent.ui.presenter import availability_copy, brief_summary, format_inr, line_total_copy, normal_result_text, price_copy, sample_display_name  # noqa: E402
-from interior_agent.ui.state import ConsultationStep, add_result_message, add_review_message, answer, append_message, back, brief_ready, demo_preview_allowed, developer_mode_allowed, ensure_question_message, initial_state, populate_from_sample, reset, review_qa_pairs, to_agent_brief  # noqa: E402
+from interior_agent.ui.presenter import advisory_message_text, availability_copy, brief_summary, format_inr, line_total_copy, normal_result_text, price_copy, sample_display_name  # noqa: E402
+from interior_agent.ui.state import ConsultationStep, add_result_message, add_submitted_answers_message, answer, append_message, back, brief_ready, demo_preview_allowed, developer_mode_allowed, initial_state, populate_from_sample, record_step_answer, reset, review_qa_pairs, to_agent_brief  # noqa: E402
 from interior_agent.validator import PlanValidator  # noqa: E402
 
 
@@ -295,8 +295,8 @@ def _sample_question(state, repo: CatalogRepository) -> None:
 
 
 def _room_question(state) -> None:
-    ensure_question_message(state, ConsultationStep.room_size, "How large is your living room?")
-    render_question_shell(ConsultationStep.room_size, "How large is your living room?", "Select a size or type exact measurements below.")
+    question = "How large is your living room?"
+    render_question_shell(ConsultationStep.room_size, question, "Select a size or type exact measurements below.")
     sizes = [
         ("Small", "Around 10 × 10 ft", 10, 10),
         ("Medium", "Around 12 × 15 ft", 15, 12),
@@ -309,7 +309,7 @@ def _room_question(state) -> None:
             if _choice(title, desc, f"room_{index}", primary=index == 1):
                 state.brief.length_cm = int(round(length_ft * 30.48))
                 state.brief.width_cm = int(round(width_ft * 30.48))
-                answer(state, f"My living room is approximately {length_ft} × {width_ft} ft.", next_to=ConsultationStep.budget)
+                record_step_answer(state, question, f"My living room is approximately {length_ft} × {width_ft} ft.", next_to=ConsultationStep.budget)
                 _set_state(state)
     with st.expander("Enter exact measurements"):
         unit = st.radio("Unit", ["feet", "cm"], horizontal=True, key="exact_unit")
@@ -321,14 +321,14 @@ def _room_question(state) -> None:
             parsed = parse_dimensions(f"{length} x {width} {ceiling if ceiling else ''} {unit}")
             if parsed:
                 state.brief.length_cm, state.brief.width_cm, state.brief.ceiling_cm = parsed
-                answer(state, f"My living room is approximately {length:g} × {width:g} {unit}.", next_to=ConsultationStep.budget)
+                record_step_answer(state, question, f"My living room is approximately {length:g} × {width:g} {unit}.", next_to=ConsultationStep.budget)
                 _set_state(state)
     close_question_shell()
 
 
 def _budget_question(state) -> None:
-    ensure_question_message(state, ConsultationStep.budget, "What total budget should I work within?")
-    render_question_shell(ConsultationStep.budget, "What total budget should I work within?", "I’ll avoid silently exceeding this budget.")
+    question = "What total budget should I work within?"
+    render_question_shell(ConsultationStep.budget, question, "I’ll avoid silently exceeding this budget.")
     options = [
         ("Under ₹50,000", "Starter essentials", 50000),
         ("₹50,000–₹1,00,000", "Compact room plan", 100000),
@@ -340,7 +340,7 @@ def _budget_question(state) -> None:
         with cols[index % 2]:
             if _choice(title, desc, f"budget_{value}", primary=value == 250000):
                 state.brief.budget_inr = value
-                answer(state, f"My total budget is {format_inr(value)}.", next_to=ConsultationStep.style)
+                record_step_answer(state, question, f"My total budget is {format_inr(value)}.", next_to=ConsultationStep.style)
                 st.session_state["assistant_budget_note"] = True
                 _set_state(state)
     with st.expander("Enter another amount"):
@@ -349,7 +349,7 @@ def _budget_question(state) -> None:
             parsed = parse_budget(amount)
             if parsed:
                 state.brief.budget_inr = parsed
-                answer(state, f"My total budget is {format_inr(parsed)}.", next_to=ConsultationStep.style)
+                record_step_answer(state, question, f"My total budget is {format_inr(parsed)}.", next_to=ConsultationStep.style)
                 _set_state(state)
             else:
                 st.error("Please enter a budget such as 250000 or 2.5 lakh.")
@@ -357,8 +357,8 @@ def _budget_question(state) -> None:
 
 
 def _style_question(state) -> None:
-    ensure_question_message(state, ConsultationStep.style, "What kind of look do you prefer?")
-    render_question_shell(ConsultationStep.style, "What kind of look do you prefer?", "Choose the closest style direction.")
+    question = "What kind of look do you prefer?"
+    render_question_shell(ConsultationStep.style, question, "Choose the closest style direction.")
     styles = [
         ("Scandinavian", "Light woods, soft neutrals, and uncluttered forms."),
         ("Modern", "Clean lines and practical comfort."),
@@ -374,14 +374,14 @@ def _style_question(state) -> None:
             if _choice(title, desc, f"style_{index}", primary=index == 0):
                 style = "Scandinavian" if title.startswith("Not sure") else title
                 state.brief.style_preference = style
-                answer(state, f"I prefer a {style} look.", next_to=ConsultationStep.must_haves)
+                record_step_answer(state, question, f"I prefer a {style} look.", next_to=ConsultationStep.must_haves)
                 _set_state(state)
     close_question_shell()
 
 
 def _requirements_question(state) -> None:
-    ensure_question_message(state, ConsultationStep.must_haves, "What must the room include?")
-    render_question_shell(ConsultationStep.must_haves, "What must the room include?", "Choose all that matter, then continue.")
+    question = "What must the room include?"
+    render_question_shell(ConsultationStep.must_haves, question, "Choose all that matter, then continue.")
     options = ["Sofa", "Coffee table", "TV unit", "Rug", "Lighting", "Storage", "Reading chair", "Side table", "Plants", "Something else"]
     current = set(state.brief.must_haves)
     cols = st.columns(2)
@@ -410,14 +410,14 @@ def _requirements_question(state) -> None:
             st.error("Choose at least one requirement to continue.")
         else:
             state.brief.must_haves = values
-            answer(state, "I need " + _join_list(values) + ".", next_to=ConsultationStep.constraints)
+            record_step_answer(state, question, "I need " + _join_list(values) + ".", next_to=ConsultationStep.constraints)
             _set_state(state)
     close_question_shell()
 
 
 def _context_question(state) -> None:
-    ensure_question_message(state, ConsultationStep.constraints, "Anything important about how you use the room?")
-    render_question_shell(ConsultationStep.constraints, "Anything important about how you use the room?", "Select any that apply or add a short note.")
+    question = "Anything important about how you use the room?"
+    render_question_shell(ConsultationStep.constraints, question, "Select any that apply or add a short note.")
     options = ["We have young children", "We have pets", "It is a rented home", "We need more storage", "We entertain guests", "Fast delivery matters", "No special constraint"]
     current = set(state.brief.constraints)
     cols = st.columns(2)
@@ -443,7 +443,7 @@ def _context_question(state) -> None:
             st.toast("That note couldn't be included, but the rest of your plan will proceed as entered.")
         state.brief.customer_note = cleaned_note
         text = "There is no special context." if not state.brief.constraints and not state.brief.customer_note else "Important context: " + _join_list(state.brief.constraints + ([state.brief.customer_note] if state.brief.customer_note else [])) + "."
-        answer(state, text, next_to=ConsultationStep.review)
+        record_step_answer(state, question, text, next_to=ConsultationStep.review)
         _set_state(state)
     close_question_shell()
 
@@ -456,7 +456,7 @@ def _review_question(state, can_run_live: bool) -> None:
     with c1:
         disabled = not ready or (DEMO_MODE and not demo_preview_allowed(state.brief)) or (not DEMO_MODE and not can_run_live) or state.agent_running or state.generated_result is not None
         if st.button("Create my room plan", key="create_plan", type="primary", disabled=disabled, use_container_width=True):
-            add_review_message(state, review_qa_pairs(state))
+            add_submitted_answers_message(state, review_qa_pairs(state))
             state.generation_requested = True
             state.step = ConsultationStep.generating
             _set_state(state)
@@ -520,32 +520,32 @@ def _handle_typed_answer(state, typed: str) -> None:
             st.error("Please enter dimensions like 15 by 12 ft or 450 x 360 cm.")
             return
         state.brief.length_cm, state.brief.width_cm, state.brief.ceiling_cm = parsed
-        answer(state, f"My living room is {escape(text)}.", next_to=ConsultationStep.budget)
+        record_step_answer(state, "How large is your living room?", f"My living room is {escape(text)}.", next_to=ConsultationStep.budget)
     elif state.step == ConsultationStep.budget:
         parsed = parse_budget(text)
         if not parsed:
             st.error("Please enter a budget such as 250000 or 2.5 lakh.")
             return
         state.brief.budget_inr = parsed
-        answer(state, f"My total budget is {format_inr(parsed)}.", next_to=ConsultationStep.style)
+        record_step_answer(state, "What total budget should I work within?", f"My total budget is {format_inr(parsed)}.", next_to=ConsultationStep.style)
     elif state.step == ConsultationStep.style:
         parsed = parse_style(text)
         if not parsed:
             st.error("Choose one of the listed styles or type a close match.")
             return
         state.brief.style_preference = parsed
-        answer(state, f"I prefer a {parsed} look.", next_to=ConsultationStep.must_haves)
+        record_step_answer(state, "What kind of look do you prefer?", f"I prefer a {parsed} look.", next_to=ConsultationStep.must_haves)
     elif state.step == ConsultationStep.must_haves:
         values = parse_multi_value_text(text)
         if not values:
             st.error("Please enter at least one requirement.")
             return
         state.brief.must_haves = values
-        answer(state, "I need " + _join_list(values) + ".", next_to=ConsultationStep.constraints)
+        record_step_answer(state, "What must the room include?", "I need " + _join_list(values) + ".", next_to=ConsultationStep.constraints)
     elif state.step == ConsultationStep.constraints:
         values = parse_multi_value_text(text)
         state.brief.customer_note = text
-        answer(state, "Important context: " + _join_list(values or [text]) + ".", next_to=ConsultationStep.review)
+        record_step_answer(state, "Anything important about how you use the room?", "Important context: " + _join_list(values or [text]) + ".", next_to=ConsultationStep.review)
     _set_state(state)
 
 
@@ -602,7 +602,7 @@ def _run_generation(state, repo: CatalogRepository, settings: Settings, api_key:
 
             result = agent.run(brief, on_trace=on_trace)
         state.generated_result = result
-        add_result_message(state)
+        add_result_message(state, advisory_message_text(result.validated))
         state.step = ConsultationStep.result
     except Exception as exc:
         append_message(state, "assistant", "We couldn’t finish your plan right now. Your room details are still here.", ConsultationStep.generating, message_type="error", stable_key="generation_error")
@@ -650,13 +650,7 @@ def _result_sections(state, repo: CatalogRepository) -> None:
         c3.metric("Products", text["product_count"])
     tab_layout, tab_shop, tab_budget, tab_details = st.tabs(["Room Layout", "Shopping List", "Budget", "Details"])
     with tab_layout:
-        layout = generate_living_room_layout(
-            int(validated.fit_result.get("room_length_cm") or state.brief.length_cm or 0),
-            int(validated.fit_result.get("room_width_cm") or state.brief.width_cm or 0),
-            _catalog_records_for_boq(repo, validated.boq),
-        )
-        st.markdown(render_layout_svg(layout), unsafe_allow_html=True)
-        st.markdown('<div class="compact-note">Conceptual layout based on an empty rectangular room. Doors, windows, columns and electrical points are not represented. Confirm site conditions before purchase or installation.</div>', unsafe_allow_html=True)
+        st.markdown('<div class="compact-note">See your room layout in the preview panel on the right.</div>', unsafe_allow_html=True)
     with tab_shop:
         for index, line in enumerate(validated.boq):
             with st.container(key=f"product_card_{index}"):
@@ -713,7 +707,10 @@ def _side_panel(state, repo: CatalogRepository) -> None:
             int(validated.fit_result.get("room_width_cm") or state.brief.width_cm or 0),
             _catalog_records_for_boq(repo, validated.boq),
         )
-        st.markdown(render_layout_svg(layout, max_px=360, min_width=230, min_height=155), unsafe_allow_html=True)
+        st.markdown(render_layout_svg(layout, max_px=480, min_width=280, min_height=200), unsafe_allow_html=True)
+        st.markdown('<div class="compact-note">Conceptual layout based on an empty rectangular room. Doors, windows, columns and electrical points are not represented. Confirm site conditions before purchase or installation.</div>', unsafe_allow_html=True)
+        for warning_text in layout.warnings:
+            st.markdown(f'<div class="compact-note">{escape(warning_text)}</div>', unsafe_allow_html=True)
     elif state.brief.length_cm and state.brief.width_cm:
         layout = generate_living_room_layout(state.brief.length_cm, state.brief.width_cm, [])
         st.markdown(f'<div class="compact-preview-svg">{render_layout_svg(layout, max_px=330, min_width=220, min_height=145)}</div>', unsafe_allow_html=True)

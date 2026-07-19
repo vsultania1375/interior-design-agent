@@ -100,3 +100,13 @@ def normal_result_text(validated: ValidatedPlan) -> dict[str, Any]:
         "product_count": sum(line.quantity for line in validated.boq),
         "things_to_review": [issue.message for issue in validated.issues],
     }
+
+
+def advisory_message_text(validated: ValidatedPlan) -> str:
+    lines = [validated.plan.design_summary]
+    considerations = list(validated.plan.tradeoffs) + list(validated.plan.assumptions)
+    if considerations:
+        lines.append("")
+        lines.append("Worth knowing:")
+        lines.extend(f"- {item}" for item in considerations)
+    return "\n".join(lines)
