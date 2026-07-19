@@ -2,36 +2,39 @@
 
 ## Scope In/Out
 
-The build is a single-room, catalog-grounded planning agent. It searches the supplied SQLite catalog, computes a quantity-aware BOQ, checks deterministic fit, refuses unsafe/out-of-scope advice, and returns structured JSON for a Streamlit UI and CLI.
+The build is a single-room, catalog-grounded planning agent. It searches the supplied SQLite catalog, computes a quantity-aware BOQ, checks deterministic fit, refuses unsafe/out-of-scope advice, and returns structured JSON for a Streamlit UI and CLI. Out of scope: auth, multi-user support, vector DB/RAG, MCP, 3D rendering, moodboards, construction guidance, live inventory reservation, taxes, discounts, delivery promises, and negotiated prices.
 
-Out of scope: auth, multi-user support, vector DB/RAG, MCP, 3D rendering, moodboards, construction guidance, live inventory reservation, taxes, discounts, delivery promises, and negotiated prices.
+**Living Room was chosen as the primary depth slice over broad shallow coverage** because the catalog has the richest seating, tables, rugs, lighting, and media-unit coverage there. This held up through the whole project: every later round (live integration, UI rebuild, guardrails) was built and verified against Living Room first. Bedroom/Dining/Study/Kids briefs remain runnable and degrade honestly rather than pretending equal depth.
 
-## Primary Slice
+## Live Agent Integration And Eval Calibration
 
-Living Room is the primary quality slice because the catalog has the richest seating, tables, rugs, lighting, and media-unit coverage. Bedroom, Dining, Study, and Kids briefs remain runnable and are expected to degrade honestly when catalog coverage or room constraints are weak.
+Plain Python tools (catalog search, budget check, fit check) were used instead of MCP/RAG — the catalog is a small structured SQLite file, so deterministic SQL and code-side math are simpler, auditable, and safe for a private repo. Catalog membership, quantities, totals, unknown prices, stock, fit, and required refusals are all **recomputed in code**, not self-certified by the model. Live integration required SDK compatibility handling for tool-schema/cache behavior; a real-key BR-01 baseline and a 7-case no-judge trap-set both passed, with one honestly documented case-level gap (`db-br-06`: a stale final-budget-check trace entry in that run — a real agent-discipline issue, not a scorer bug). A full 25-case live run was started once and interrupted before completion; strict cost controls (`--confirm-full-live`, `--confirm-judge-cost`, multi-case confirmation, usage reporting) were added afterward specifically so that incident couldn't repeat silently. See `docs/LIVE_RUN_COST_INCIDENT.md` and `docs/EVAL_RESULTS.md`.
 
-## Tooling Choice
+## The UI Rebuild Arc — And The Bug That Shipped Silently
 
-Plain Python tools were used instead of MCP or RAG because the challenge data is a small structured SQLite catalog. SQL queries, deterministic budget math, and deterministic fit checks are simpler, auditable, and private-repo safe.
+The customer-facing Streamlit UI went through several iteration rounds (conversational flow, layout density, full-height dual-pane rebuild with a resizable panel divider). For multiple of those rounds, a real bug shipped and was reported as fixed based on **source review alone**: `st.markdown(html, unsafe_allow_html=True)` was used to open a styled `<div>` in one call and close it in a separate later call, with native Streamlit widgets rendered in between. Streamlit does not nest across separate `st.markdown` calls — each is an independent sibling — so the result was an empty styled box followed by the real widgets rendering unstyled below it. This is exactly the kind of thing that reads as correct in a diff and is wrong on screen, and it passed several rounds precisely because verification was "does the code look right," not "does the rendered page look right." The fix was mandatory Playwright screenshot verification at multiple real viewports before any round could be called done, plus real mouse-drag simulation to verify the resizable divider actually reflows (not just that the CSS property is present). This is the same "prove it, don't just claim it" discipline the challenge brief asks for applied to the agent's plans — applied here to the UI instead.
 
-## Code Overrides Model Behavior
+## Free-Text Injection Guardrails
 
-Catalog membership, quantities, budget totals, unknown prices, stock, lead time, fit, final trace consistency, must-have coverage, duplicate item IDs, and required refusals are recomputed in code. The model is not trusted to self-certify those guardrails.
+Customer free text (the context-step note, custom "something else" requirements) flows into the brief sent to the live agent. Four layers were added: a 300-character cap (UI parameter plus defensive truncation in code, so a bypassed widget can't defeat it), a deterministic regex pre-screen (`screen_free_text`) that strips text matching known injection patterns before it ever reaches the brief, an additive system-prompt instruction that free-text fields are always descriptive customer input and never instructions, and confirmation that no free-text input surface exists once a plan has been generated. **Honest limitation:** the regex screen is a first-layer, pattern-based defense — it will not catch paraphrased or obfuscated injection attempts outside its known patterns. The prompt hardening is the intended second layer for anything that slips through the first. This is not claimed as complete protection.
 
-Live integration added SDK compatibility handling for tool-schema/cache behavior and confirmed BR-01 can complete with a real Anthropic key. Cost controls now prevent accidental full live runs: one explicit case is allowed, multi-case and full runs require explicit confirmation flags, judge calls require a separate confirmation, and usage totals are reported when Anthropic returns them.
+## Final Eval Results
 
-## Fit and Data Limits
+A full 25-case live judged run has not been completed — see `docs/EVAL_RESULTS.md` for the honest breakdown of what has and hasn't been verified (offline harness: 25/25 executed at zero cost; live: BR-01 + a 7-case no-judge sample only). The subjective judge gate (≥4/5 on ≥90% of judged cases) has never been evaluated.
 
-Fit is an empty-rectangle heuristic with category clearances and occupancy thresholds. It is not a floor plan and does not know doors, windows, columns, services, exact placement, accessibility, or installation constraints. Unknown prices stay price-on-request and cannot support a guaranteed complete within-budget plan. Out-of-stock products must be omitted or clearly described as unavailable references.
+## What Would Break In Production
 
-## Prompt Injection
+Fit is an empty-rectangle heuristic — no doors, windows, columns, or services. The consultation is a single-shot brief with no revision loop once a plan is generated. No Vastu rules. No delivery cost or GST-inclusive pricing. Stock and lead times are catalog snapshots, not live inventory. Unknown prices stay price-on-request and are never treated as zero or as a guaranteed-complete-within-budget plan.
 
-Customer notes are included as data inside the brief. System instructions and validator checks continue to enforce catalog grounding, budget, fit, refusals, and no guarantees even if the note asks the model to ignore them.
+## What's Next, In Priority Order
 
-## Still Unverified
+1. **Multi-turn plan revision** — let the customer adjust an existing plan (swap an item, nudge budget) without restarting the whole brief; currently single-shot.
+2. **Richer injection defense** — semantic/LLM-assisted screening layered on top of the current regex pre-screen, given its documented pattern-matching limitation above.
+3. The remaining original roadmap items: door/window-aware fit, Vastu-aware placement rules, delivery/GST-inclusive pricing, live inventory sync.
+4. The outstanding full judged evaluation run, once API budget is available (see `docs/LIVE_TEST_RUNBOOK.md`).
 
-Live BR-01 passed in an earlier calibration session, and saved trap-set reports exist, but the full 25-case run was interrupted and no judged run has completed. The project does not yet claim full live ship-gate success. Remaining uncertainty is live tool selection across all cases, prompt adherence, JSON reliability, re-planning consistency, and judge-scored style/rationale quality.
+## AI Tooling Used
 
-## Next
-
-With a key: run one affected case, use explicit confirmation flags for intentional calibration batches, run the full deterministic eval only with `--all --confirm-full-live`, run the judge eval only with `--confirm-judge-cost`, deploy privately, and record the demo.
+Both **Codex** and **Claude Code** were used across this project. Codex was used for the early backend build and live-integration calibration (catalog tools, agent loop, the SDK tool-schema/cache compatibility fix that let BR-01 complete live). Claude Code was used for the UI rebuild and the guardrail/eval-documentation work in this session. Concrete catch-and-correct examples:
+- **Claude Code:** caught the container-nesting bug above via mandatory screenshot verification after it had shipped silently through prior source-review-only rounds, and fixed it by replacing the split `st.markdown` div pairs with real `st.container(key=...)` blocks.
+- **Codex:** caught and fixed the live SDK tool-schema/cache compatibility issue during initial live calibration that was blocking BR-01 from completing against the real Anthropic API, before the eval cost-safety controls existed.

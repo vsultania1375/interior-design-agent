@@ -17,7 +17,8 @@ Out of scope: authentication, multi-user state, vector search, MCP, 3D rendering
 - `src/interior_agent/agent.py`: Anthropic tool-calling loop with injectable client for offline tests.
 - `src/interior_agent/validator.py`: deterministic post-generation guardrails.
 - `evals/`: golden set, case-aware scorers, offline fixtures, ship gate.
-- `app.py`: Streamlit UI.
+- `app.py`: Streamlit customer consultation UI.
+- `src/interior_agent/ui/`: Streamlit state, customer presenters, offline demo result, and deterministic 2D layout helpers.
 - `cli.py`: terminal runner.
 
 The system is agentic because the model must call tools, inspect tool results, re-plan when rejected, then emit final JSON that is independently revalidated.
@@ -56,7 +57,20 @@ python cli.py BR-01 --json --output local_result.json
 streamlit run app.py
 ```
 
-The app loads without a key and shows setup guidance. With a key, it shows visible tool calls, iteration state, convergence state, validator status, BOQ, stock, lead time, unknown prices, flags, trade-offs, refusals, and the fit heuristic limitation.
+The default Streamlit experience is a living-room consultation: one question at a time, clickable answer cards, optional free text, a review step before any live model call, a customer-facing result screen, and a deterministic 2D room map. Developer Mode keeps raw trace, tool inputs/outputs, validator codes, usage totals, and structured JSON hidden unless explicitly enabled.
+
+Zero-credit UI preview:
+
+```bash
+ANTHROPIC_API_KEY= \
+INTERIOR_UI_DEMO_MODE=1 \
+python3 -m streamlit run app.py \
+  --server.headless true \
+  --server.address 127.0.0.1 \
+  --server.port 8900
+```
+
+In demo mode the result is generated from real catalog rows and deterministic validation, but no Anthropic client is constructed. In normal mode the live agent is available only after the user reaches review and clicks the primary create-plan action.
 
 ## Streamlit Cloud deployment
 

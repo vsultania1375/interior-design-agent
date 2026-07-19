@@ -20,3 +20,4 @@ eval_results/live/
 eval_results/offline/
 eval_results/
 *.log
+.local-screenshots/
