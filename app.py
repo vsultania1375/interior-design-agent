@@ -89,6 +89,7 @@ def _css() -> None:
         .chat-bubble { max-width:82%; border-radius:15px; padding:.48rem .68rem; font-size:.92rem; line-height:1.34; white-space:pre-wrap; }
         .chat-bubble.assistant { background:#f7f0e7; color:#2b2621; border:1px solid #eadfd2; border-bottom-left-radius:6px; }
         .chat-bubble.user { background:#2f6b4f; color:white; border-bottom-right-radius:6px; }
+        .st-key-chat_scroll [data-testid="stMarkdownContainer"]:has(.chat-row) { margin-bottom:0 !important; }
         .st-key-chat_scroll > div:has([class*="st-key-active_card_"]) { margin-top:auto !important; }
         [class*="st-key-active_card_"] { border:1px solid #ded5c9 !important; background:#fffaf4 !important; border-radius:16px !important; padding:.6rem .7rem !important; margin:.2rem 0 .3rem !important; }
         .active-head { display:flex; justify-content:space-between; gap:1rem; color:#28231f; font-weight:780; font-size:1.02rem; }
@@ -102,6 +103,9 @@ def _css() -> None:
         .st-key-composer { flex:0 0 auto; border-top:1px solid #efe9dd; padding:.6rem .95rem .85rem; }
         .st-key-composer div.stTextInput input { border-radius:999px !important; border-color:#e7e0d5 !important; background:#fffefc !important; min-height:2.3rem; }
         .compact-note { color:#746b60; font-size:.8rem; margin:.3rem 0 0; }
+        .progress-status { display:flex; align-items:center; color:#948b7e; font-size:.85rem; font-style:italic; padding:.3rem .1rem; }
+        .progress-status::after { content:"..."; display:inline-block; width:0; overflow:hidden; white-space:nowrap; animation:progress-ellipsis 1.2s steps(4,end) infinite; }
+        @keyframes progress-ellipsis { to { width:1em; } }
         .side-title { color:#2f6b4f; font-weight:780; font-size:.95rem; margin-bottom:.15rem; }
         .side-copy { color:#736a60; font-size:.86rem; margin-bottom:.55rem; }
         .kv { display:flex; justify-content:space-between; gap:.75rem; padding:.31rem 0; border-bottom:1px solid #efe7dc; font-size:.88rem; }
@@ -575,16 +579,20 @@ def _run_generation(state, repo: CatalogRepository, settings: Settings, api_key:
         return
     state.agent_running = True
     progress = st.empty()
+
+    def show_progress(text: str) -> None:
+        progress.markdown(f'<div class="progress-status">{escape(text)}</div>', unsafe_allow_html=True)
+
     brief = to_agent_brief(state.brief)
     try:
         if DEMO_MODE:
             if not demo_preview_allowed(state.brief):
                 state.step = ConsultationStep.review
                 return
-            progress.write("Preparing your final plan")
+            show_progress("Preparing your final plan")
             result = make_demo_result(repo, brief)
         else:
-            append_message(state, "assistant", "Understanding your room", ConsultationStep.generating, message_type="progress", stable_key="progress_start")
+            show_progress("Understanding your room")
             tools = AgentTools(repo)
             validator = PlanValidator(repo)
             agent = InteriorDesignAgent(
@@ -597,8 +605,7 @@ def _run_generation(state, repo: CatalogRepository, settings: Settings, api_key:
             )
 
             def on_trace(entry: TraceEntry) -> None:
-                append_message(state, "assistant", _progress_label(entry), ConsultationStep.generating, message_type="progress", stable_key=f"progress_{entry.tool}")
-                progress.write(_progress_label(entry))
+                show_progress(_progress_label(entry))
 
             result = agent.run(brief, on_trace=on_trace)
         state.generated_result = result
