@@ -42,6 +42,20 @@ def parse_budget(text: str) -> int | None:
     return int(round(value))
 
 
+# Cheapest single Living Room catalog item is ~₹3,200 (an accessory); ₹5,000 sits just above that,
+# catching likely typos (e.g. a missing "k"/"lakh") without blocking a genuine low-but-real budget.
+MIN_BUDGET_INR = 5000
+
+
+def is_plausible_budget(value: int) -> bool:
+    return value >= MIN_BUDGET_INR
+
+
+def budget_needs_confirmation(parsed: int, pending_low_budget: int | None) -> bool:
+    """True when a below-floor budget hasn't already been re-entered (confirmed) by the user."""
+    return not is_plausible_budget(parsed) and pending_low_budget != parsed
+
+
 def parse_style(text: str) -> str | None:
     lowered = text.strip().lower()
     if lowered in {"not sure", "suggest", "suggest one"}:

@@ -91,12 +91,20 @@ def availability_copy(line: BOQLine) -> str:
 
 
 def normal_result_text(validated: ValidatedPlan) -> dict[str, Any]:
+    over_budget = validated.over_budget
+    if over_budget:
+        remaining_label = "Over budget by"
+        remaining = format_inr(abs(validated.remaining_inr))
+    else:
+        remaining_label = "Known-price budget left" if validated.has_unknown_prices else "Budget left"
+        remaining = format_inr(validated.remaining_inr)
     return {
         "title": f"Your {validated.plan.room_type}",
         "summary": validated.plan.design_summary,
         "estimated_cost": format_inr(validated.known_total_inr),
-        "remaining": format_inr(validated.remaining_inr),
-        "remaining_label": "Known-price budget left" if validated.has_unknown_prices else "Budget left",
+        "remaining": remaining,
+        "remaining_label": remaining_label,
+        "over_budget": over_budget,
         "product_count": sum(line.quantity for line in validated.boq),
         "things_to_review": [issue.message for issue in validated.issues],
     }

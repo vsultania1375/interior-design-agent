@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from interior_agent.ui.input_parser import parse_budget, parse_dimensions, parse_multi_value_text, parse_style
+from interior_agent.ui.input_parser import MIN_BUDGET_INR, budget_needs_confirmation, is_plausible_budget, parse_budget, parse_dimensions, parse_multi_value_text, parse_style
 from interior_agent.ui.state import (
     ConsultationStep,
     add_review_message,
@@ -55,6 +55,38 @@ def test_invalid_typed_input_returns_none() -> None:
     assert parse_budget("not sure") is None
     assert parse_dimensions("large room") is None
     assert parse_style("castlecore") is None
+
+
+def test_budget_below_floor_needs_confirmation_on_first_entry() -> None:
+    parsed = parse_budget("10")
+    assert parsed == 10
+    assert not is_plausible_budget(parsed)
+    assert budget_needs_confirmation(parsed, pending_low_budget=None) is True
+
+
+def test_budget_below_floor_reentered_same_value_no_longer_needs_confirmation() -> None:
+    parsed = parse_budget("10")
+    assert budget_needs_confirmation(parsed, pending_low_budget=10) is False
+
+
+def test_budget_below_floor_reentered_different_low_value_needs_confirmation_again() -> None:
+    parsed = parse_budget("10")
+    assert budget_needs_confirmation(parsed, pending_low_budget=5) is True
+
+
+def test_impossible_budget_golden_case_value_is_above_floor() -> None:
+    # db-br-06's ₹20,000 impossible-budget trap must never be caught by the floor check —
+    # it's a legitimate low budget meant to trigger the agent's guardrail, not a typo.
+    assert is_plausible_budget(20000) is True
+    assert budget_needs_confirmation(20000, pending_low_budget=None) is False
+
+
+def test_button_preset_budgets_are_all_above_floor() -> None:
+    # Mirrors app.py's _budget_question preset values (₹50,000 is the lowest preset).
+    assert MIN_BUDGET_INR < 50000
+    for preset in (50000, 100000, 250000, 500000):
+        assert is_plausible_budget(preset) is True
+        assert budget_needs_confirmation(preset, pending_low_budget=None) is False
 
 
 def test_back_preserves_other_answers() -> None:

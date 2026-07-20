@@ -24,7 +24,7 @@ from interior_agent.schemas import BOQLine, TraceEntry  # noqa: E402
 from interior_agent.tools import AgentTools  # noqa: E402
 from interior_agent.ui.chat import START_CHOICES, close_question_shell, render_messages, render_qa_summary_card, render_question_shell  # noqa: E402
 from interior_agent.ui.demo import make_demo_result  # noqa: E402
-from interior_agent.ui.input_parser import parse_budget, parse_dimensions, parse_multi_value_text, parse_style, screen_free_text  # noqa: E402
+from interior_agent.ui.input_parser import budget_needs_confirmation, parse_budget, parse_dimensions, parse_multi_value_text, parse_style, screen_free_text  # noqa: E402
 from interior_agent.ui.layout import generate_living_room_layout, render_layout_svg  # noqa: E402
 from interior_agent.ui.presenter import advisory_message_text, availability_copy, brief_summary, format_inr, line_total_copy, normal_result_text, price_copy, sample_display_name  # noqa: E402
 from interior_agent.ui.state import ConsultationStep, add_feedback_message, add_result_message, add_submitted_answers_message, answer, append_message, back, brief_ready, demo_preview_allowed, developer_mode_allowed, initial_state, populate_from_sample, record_step_answer, reset, review_qa_pairs, to_agent_brief  # noqa: E402
@@ -83,6 +83,8 @@ def _css() -> None:
         .badge-green { background:#edf8f0; border-color:#b8ddc0; color:#27633a; }
         .badge-amber { background:#fff8e5; border-color:#e7ce91; color:#725617; }
         .badge-red { background:#fff0ee; border-color:#ebb5ad; color:#8a2f24; }
+        .st-key-budget_metric_over [data-testid="stMetricValue"], .st-key-budget_metric_over [data-testid="stMetricLabel"] { color:#8a2f24; }
+        .over-budget-text { color:#8a2f24; font-weight:600; }
         .messages { display:flex; flex-direction:column; gap:.4rem; margin:0; }
         .chat-row { display:flex; }
         .chat-row.user { justify-content:flex-end; }
@@ -344,6 +346,7 @@ def _budget_question(state) -> None:
         with cols[index % 2]:
             if _choice(title, desc, f"budget_{value}", primary=value == 250000):
                 state.brief.budget_inr = value
+                state.pending_low_budget = None
                 record_step_answer(state, question, f"My total budget is {format_inr(value)}.", next_to=ConsultationStep.style)
                 st.session_state["assistant_budget_note"] = True
                 _set_state(state)
@@ -351,12 +354,16 @@ def _budget_question(state) -> None:
         amount = st.text_input("Budget", placeholder="Example: 2.5 lakh")
         if st.button("Use budget", key="use_budget", type="primary"):
             parsed = parse_budget(amount)
-            if parsed:
+            if not parsed:
+                st.error("Please enter a budget such as 250000 or 2.5 lakh.")
+            elif budget_needs_confirmation(parsed, state.pending_low_budget):
+                state.pending_low_budget = parsed
+                st.warning(f"{format_inr(parsed)} looks unusually low for a full room plan — is that right? Enter it again to confirm, or type a different amount.")
+            else:
+                state.pending_low_budget = None
                 state.brief.budget_inr = parsed
                 record_step_answer(state, question, f"My total budget is {format_inr(parsed)}.", next_to=ConsultationStep.style)
                 _set_state(state)
-            else:
-                st.error("Please enter a budget such as 250000 or 2.5 lakh.")
     close_question_shell()
 
 
@@ -533,6 +540,11 @@ def _handle_typed_answer(state, typed: str) -> None:
         if not parsed:
             st.error("Please enter a budget such as 250000 or 2.5 lakh.")
             return
+        if budget_needs_confirmation(parsed, state.pending_low_budget):
+            state.pending_low_budget = parsed
+            st.warning(f"{format_inr(parsed)} looks unusually low for a full room plan — is that right? Type it again to confirm, or enter a different amount.")
+            return
+        state.pending_low_budget = None
         state.brief.budget_inr = parsed
         record_step_answer(state, "What total budget should I work within?", f"My total budget is {format_inr(parsed)}.", next_to=ConsultationStep.style)
     elif state.step == ConsultationStep.style:
@@ -679,7 +691,9 @@ def _result_sections(state, repo: CatalogRepository) -> None:
         )
         c1, c2, c3 = st.columns(3)
         c1.metric("Estimated cost", text["estimated_cost"])
-        c2.metric(text["remaining_label"], text["remaining"])
+        with c2:
+            with st.container(key="budget_metric_over" if text["over_budget"] else "budget_metric_ok"):
+                st.metric(text["remaining_label"], text["remaining"])
         c3.metric("Products", text["product_count"])
     tab_layout, tab_shop, tab_budget, tab_details = st.tabs(["Room Layout", "Shopping List", "Budget", "Details"])
     with tab_layout:
@@ -700,6 +714,11 @@ def _result_sections(state, repo: CatalogRepository) -> None:
     with tab_budget:
         budget = max(validated.plan.budget_inr, 1)
         st.progress(min(max(validated.known_total_inr, 0) / budget, 1.0), text=f"{format_inr(validated.known_total_inr)} of {format_inr(budget)}")
+        budget_line = f"{text['remaining_label']}: {text['remaining']}"
+        if text["over_budget"]:
+            st.markdown(f'<div class="over-budget-text">{escape(budget_line)}</div>', unsafe_allow_html=True)
+        else:
+            st.write(budget_line)
         for line in validated.boq:
             st.write(f"{line.category}: {line.name} × {line.quantity} — {line_total_copy(line)}")
         if validated.has_unknown_prices:

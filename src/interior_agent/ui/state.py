@@ -80,6 +80,7 @@ class ConsultationState:
     generation_requested: bool = False
     agent_running: bool = False
     pending_feedback: str = ""
+    pending_low_budget: int | None = None
 
     @property
     def history(self) -> list[dict[str, str]]:
