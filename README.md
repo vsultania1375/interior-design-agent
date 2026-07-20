@@ -68,6 +68,13 @@ cp .env.example .env
 
 For Streamlit Cloud, use `.streamlit/secrets.toml.example` as the shape for Secrets. Do not commit real keys or `.streamlit/secrets.toml`.
 
+## API Key & Model
+
+`.env.example` intentionally ships placeholders (`<your-key>`, `<configured-model-id>`), not a real
+key or model string. Set `ANTHROPIC_API_KEY` to your own key. `ANTHROPIC_MODEL` is optional — if unset,
+the code falls back to `claude-sonnet-5` (see `src/interior_agent/config.py`). To use a different
+Claude model, set `ANTHROPIC_MODEL` explicitly in `.env` (or Streamlit Cloud Secrets).
+
 ## CLI
 
 ```bash
