@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from interior_agent.ui.layout import generate_living_room_layout, render_layout_svg
+from interior_agent.ui.layout import generate_living_room_layout, render_layout_svg, render_layout_warnings_html
 
 
 def _items():
@@ -52,3 +52,31 @@ def test_svg_contains_disclaimer_not_json() -> None:
     svg = render_layout_svg(generate_living_room_layout(480, 360, _items()))
     assert "Conceptual empty-room layout" in svg
     assert "{" not in svg
+
+
+def test_out_of_category_item_is_unplaced_with_explanatory_warning() -> None:
+    # Real catalog category and dimensions for a Bed (BED-001): out of place in a Living Room layout,
+    # but must never be silently dropped — it's still a real, priced item in the plan.
+    items = _items() + [{"item_id": "BED-001", "category": "Bed", "name": "Bed", "width_cm": 160, "depth_cm": 210}]
+    layout = generate_living_room_layout(480, 360, items)
+    assert "BED-001" in layout.unplaced_item_ids
+    assert not any(item.item_id == "BED-001" for item in layout.placed_items)
+    matching = [warning for warning in layout.warnings if "BED-001" in warning]
+    assert matching, "expected a warning message referencing BED-001"
+    assert "isn't a typical living-room piece" in matching[0]
+    assert "Bed" in matching[0]
+
+
+def test_render_layout_warnings_html_includes_unplaced_item_warning() -> None:
+    items = _items() + [{"item_id": "BED-001", "category": "Bed", "name": "Bed", "width_cm": 160, "depth_cm": 210}]
+    layout = generate_living_room_layout(480, 360, items)
+    html = render_layout_warnings_html(layout)
+    assert "BED-001" in html
+    assert "typical living-room piece" in html
+    assert "compact-note" in html
+
+
+def test_render_layout_warnings_html_empty_when_no_warnings() -> None:
+    layout = generate_living_room_layout(480, 360, _items())
+    assert layout.warnings == []
+    assert render_layout_warnings_html(layout) == ""

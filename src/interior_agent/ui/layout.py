@@ -143,9 +143,14 @@ def generate_living_room_layout(room_length_cm: int, room_width_cm: int, catalog
         role = ROLE_CATEGORIES.get(category)
         dims = _dims(item)
         if not role or not dims:
-            result.unplaced_item_ids.append(str(item.get("item_id")))
-            if not dims:
-                result.warnings.append(f"{item.get('item_id')} has no catalog dimensions and was not visualised.")
+            item_id = str(item.get("item_id"))
+            result.unplaced_item_ids.append(item_id)
+            if not role:
+                result.warnings.append(
+                    f"{item_id} ({category}) isn't a typical living-room piece and wasn't placed in this layout — it's still included in your plan and budget."
+                )
+            else:
+                result.warnings.append(f"{item_id} has no catalog dimensions and was not visualised.")
             continue
         width, depth = dims
         counts[role] = counts.get(role, 0) + 1
@@ -243,3 +248,8 @@ def render_layout_svg(layout: LayoutResult, *, max_px: int = 520, min_width: int
     parts.append('<text x="20" y="{:.1f}" font-family="Inter, Arial" font-size="11" fill="#7d746b">Conceptual empty-room layout; verify site conditions before purchase.</text>'.format(height_px + 44))
     parts.append("</svg>")
     return "".join(parts)
+
+
+def render_layout_warnings_html(layout: LayoutResult) -> str:
+    """Shared markup for layout.warnings, used by both the side-panel preview and the result-tab view."""
+    return "".join(f'<div class="compact-note">{escape(warning_text)}</div>' for warning_text in layout.warnings)

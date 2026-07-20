@@ -25,7 +25,7 @@ from interior_agent.tools import AgentTools  # noqa: E402
 from interior_agent.ui.chat import START_CHOICES, close_question_shell, render_messages, render_qa_summary_card, render_question_shell  # noqa: E402
 from interior_agent.ui.demo import make_demo_result  # noqa: E402
 from interior_agent.ui.input_parser import budget_needs_confirmation, parse_budget, parse_dimensions, parse_multi_value_text, parse_style, screen_free_text  # noqa: E402
-from interior_agent.ui.layout import generate_living_room_layout, render_layout_svg  # noqa: E402
+from interior_agent.ui.layout import generate_living_room_layout, render_layout_svg, render_layout_warnings_html  # noqa: E402
 from interior_agent.ui.presenter import advisory_message_text, availability_copy, brief_summary, format_inr, line_total_copy, normal_result_text, price_copy, sample_display_name  # noqa: E402
 from interior_agent.ui.state import ConsultationStep, add_feedback_message, add_result_message, add_submitted_answers_message, answer, append_message, back, brief_ready, demo_preview_allowed, developer_mode_allowed, initial_state, populate_from_sample, record_step_answer, reset, review_qa_pairs, to_agent_brief  # noqa: E402
 from interior_agent.validator import PlanValidator  # noqa: E402
@@ -698,6 +698,12 @@ def _result_sections(state, repo: CatalogRepository) -> None:
     tab_layout, tab_shop, tab_budget, tab_details = st.tabs(["Room Layout", "Shopping List", "Budget", "Details"])
     with tab_layout:
         st.markdown('<div class="compact-note">See your room layout in the preview panel on the right.</div>', unsafe_allow_html=True)
+        layout = generate_living_room_layout(
+            int(validated.fit_result.get("room_length_cm") or state.brief.length_cm or 0),
+            int(validated.fit_result.get("room_width_cm") or state.brief.width_cm or 0),
+            _catalog_records_for_boq(repo, validated.boq),
+        )
+        st.markdown(render_layout_warnings_html(layout), unsafe_allow_html=True)
     with tab_shop:
         for index, line in enumerate(validated.boq):
             with st.container(key=f"product_card_{index}"):
@@ -761,8 +767,7 @@ def _side_panel(state, repo: CatalogRepository) -> None:
         )
         st.markdown(render_layout_svg(layout, max_px=480, min_width=280, min_height=200), unsafe_allow_html=True)
         st.markdown('<div class="compact-note">Conceptual layout based on an empty rectangular room. Doors, windows, columns and electrical points are not represented. Confirm site conditions before purchase or installation.</div>', unsafe_allow_html=True)
-        for warning_text in layout.warnings:
-            st.markdown(f'<div class="compact-note">{escape(warning_text)}</div>', unsafe_allow_html=True)
+        st.markdown(render_layout_warnings_html(layout), unsafe_allow_html=True)
     elif state.brief.length_cm and state.brief.width_cm:
         layout = generate_living_room_layout(state.brief.length_cm, state.brief.width_cm, [])
         st.markdown(f'<div class="compact-preview-svg">{render_layout_svg(layout, max_px=330, min_width=220, min_height=145)}</div>', unsafe_allow_html=True)
