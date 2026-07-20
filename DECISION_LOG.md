@@ -24,11 +24,11 @@ A full 25-case live judged run has not been completed — see `docs/EVAL_RESULTS
 
 ## What Would Break In Production
 
-Fit is an empty-rectangle heuristic — no doors, windows, columns, or services. The consultation is a single-shot brief with no revision loop once a plan is generated. No Vastu rules. No delivery cost or GST-inclusive pricing. Stock and lead times are catalog snapshots, not live inventory. Unknown prices stay price-on-request and are never treated as zero or as a guaranteed-complete-within-budget plan.
+Fit is an empty-rectangle heuristic — no doors, windows, columns, or services. No Vastu rules. No delivery cost or GST-inclusive pricing. Stock and lead times are catalog snapshots, not live inventory. Unknown prices stay price-on-request and are never treated as zero or as a guaranteed-complete-within-budget plan. The ship gate scores budget **safety** (plans never exceed budget) but not budget **utilization** quality — it does not flag or score cases where a large unused budget is left idle with only a generic suggestion to spend more, rather than the agent proactively using the headroom well; this is a known, deliberate scope gap, not an oversight.
 
 ## What's Next, In Priority Order
 
-1. **Multi-turn plan revision** — let the customer adjust an existing plan (swap an item, nudge budget) without restarting the whole brief; currently single-shot.
+1. **Finer-grained plan revision** — free-text feedback after a result (routed through the same guardrails, appended to the original brief, rerun through the same live-agent path, with every prior result kept in the chat log) now exists; targeted single-item swaps or budget nudges without a full regeneration do not.
 2. **Richer injection defense** — semantic/LLM-assisted screening layered on top of the current regex pre-screen, given its documented pattern-matching limitation above.
 3. The remaining original roadmap items: door/window-aware fit, Vastu-aware placement rules, delivery/GST-inclusive pricing, live inventory sync.
 4. The outstanding full judged evaluation run, once API budget is available (see `docs/LIVE_TEST_RUNBOOK.md`).

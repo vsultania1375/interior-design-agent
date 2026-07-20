@@ -21,8 +21,8 @@ Live design quality is not claimed until an Anthropic key is supplied and the li
   several rounds until mandatory screenshot verification caught it), the injection guardrail layers and
   their honest limits, and what's next.
 - **Known limitations:** see "What Would Break In Production" in [`DECISION_LOG.md`](DECISION_LOG.md#what-would-break-in-production) —
-  in short, no door/window-aware layout, single-shot brief with no revision, no Vastu rules, no
-  delivery/GST pricing, and snapshot-only stock data.
+  in short, no door/window-aware layout, no Vastu rules, no delivery/GST pricing, snapshot-only stock
+  data, and a ship gate that scores budget safety but not budget-utilization quality.
 
 ## Scope
 
